@@ -2,7 +2,27 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use iced::{button, container, scrollable, Color};
+use iced::{button, container, scrollable, Color, Font};
+
+pub const FONT_MONO: Font = Font::External {
+    name: "JetbrainsMono",
+    bytes: include_bytes!("../assets/fonts/JetBrainsMono-Regular.ttf"),
+};
+
+pub const FONT_REGULAR: Font = Font::External {
+    name: "Roboto",
+    bytes: include_bytes!("../assets/fonts/Roboto-Regular.ttf"),
+};
+
+pub const FONT_MEDIUM: Font = Font::External {
+    name: "Roboto",
+    bytes: include_bytes!("../assets/fonts/Roboto-Medium.ttf"),
+};
+
+pub const FONT_BLACK: Font = Font::External {
+    name: "Roboto",
+    bytes: include_bytes!("../assets/fonts/Roboto-Black.ttf"),
+};
 
 const SURFACE: Color = Color::from_rgb(
     0x40 as f32 / 255.0,
@@ -23,9 +43,21 @@ const HOVERED: Color = Color::from_rgb(
 );
 
 const BACKGROUND: Color = Color::from_rgb(
+    0x2A as f32 / 255.0,
     0x21 as f32 / 255.0,
-    0x21 as f32 / 255.0,
-    0x21 as f32 / 255.0,
+    0x1C as f32 / 255.0,
+);
+
+pub const TEXT: Color = Color::from_rgb(
+    0xBD as f32 / 255.0,
+    0xAE as f32 / 255.0,
+    0x9D as f32 / 255.0,
+);
+
+pub const TEXT_KEYBIND: Color = Color::from_rgb(
+    0xC5 as f32 / 255.0,
+    0x65 as f32 / 255.0,
+    0x6B as f32 / 255.0,
 );
 
 pub struct Container;
@@ -36,7 +68,7 @@ impl container::StyleSheet for Container {
     fn style(&self) -> container::Style {
         container::Style {
             background: BACKGROUND.into(),
-            text_color: Color::WHITE.into(),
+            text_color: TEXT.into(),
             ..container::Style::default()
         }
     }

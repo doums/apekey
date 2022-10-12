@@ -5,10 +5,11 @@
 use clap::Parser;
 use iced::widget::Text;
 use iced::{
-    executor, scrollable, Application, Color, Command, Container, Element, Length, Scrollable,
-    Settings, Padding,
+    alignment::Vertical, executor, scrollable, Alignment, Application, Color, Command, Container,
+    Element, Length, Padding, Row, Scrollable, Settings,
 };
 use parser::Token;
+use style::{FONT_BLACK, FONT_MEDIUM, FONT_MONO, TEXT_KEYBIND};
 #[macro_use]
 extern crate log;
 
@@ -42,7 +43,7 @@ pub fn main() -> iced::Result {
     let mut settings = Settings {
         antialiasing: true,
         default_text_size: 22,
-        default_font: Some("JetbrainsMono".as_bytes()),
+        default_font: Some(include_bytes!("../assets/fonts/Roboto-Regular.ttf")),
         ..Settings::with_flags(XmokeyFlags {
             config_path: cli.path,
         })
@@ -116,7 +117,7 @@ impl Application for Xmokey {
             Message::ParsingDone(tokens) => {
                 println!("received {:#?}", tokens);
                 self.tokens = tokens;
-                self.state = State::Idle;
+                self.state = State::RenderKeybinds;
                 Command::none()
             }
             Message::ConfigError(err) => {
@@ -138,20 +139,49 @@ impl Application for Xmokey {
         match &self.state {
             State::ReadingConfig => Text::new("... reading xmonad.hs").into(),
             State::ParsingConfig => Text::new("... parsing xmonad.hs").into(),
-            State::Idle => self
-                .tokens
-                .iter()
-                .cloned()
-                .fold(
-                    Scrollable::new(&mut self.scrollable),
-                    |scrollable, message| scrollable.push(Text::new("plop")),
-                )
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .spacing(8)
-                .padding(Padding::from([20, 30]))
-                .style(style::Scrollable)
-                .into(),
+            State::RenderKeybinds => {
+                let content = self
+                    .tokens
+                    .iter()
+                    .fold(
+                        Scrollable::new(&mut self.scrollable).style(style::Scrollable),
+                        |scrollable, token| match token {
+                            Token::Title(v) => scrollable.push(
+                                Text::new(v)
+                                    .size(40)
+                                    .font(FONT_BLACK)
+                                    .height(Length::Units(60)),
+                            ),
+                            Token::Section(v) => scrollable.push(
+                                Text::new(v)
+                                    .font(FONT_MEDIUM)
+                                    .size(20)
+                                    .height(Length::Units(40))
+                                    .vertical_alignment(Vertical::Center),
+                            ),
+                            Token::Keybind { description, keys } => scrollable.push(
+                                Row::new()
+                                    .spacing(20)
+                                    .align_items(Alignment::Center)
+                                    .push(Text::new(keys).font(FONT_MONO).color(TEXT_KEYBIND))
+                                    .push(Text::new(description)),
+                            ),
+                            Token::Text(v) => scrollable.push(Text::new(v)),
+                        },
+                    )
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .spacing(8)
+                    .padding(Padding::from([20, 30]))
+                    .style(style::Scrollable);
+                Container::new(content)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .center_x()
+                    .center_y()
+                    .style(style::Container)
+                    .into()
+            }
             State::Error(err) => Text::new(err).color(red).into(),
         }
 
@@ -169,6 +199,6 @@ impl Application for Xmokey {
 enum State {
     ReadingConfig,
     ParsingConfig,
-    Idle,
+    RenderKeybinds,
     Error(String),
 }
