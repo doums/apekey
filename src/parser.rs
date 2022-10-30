@@ -9,6 +9,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use std::vec;
 use tokio::{fs, io::AsyncBufReadExt};
+use tracing::{debug, instrument, trace, warn};
 
 #[derive(Debug, Clone)]
 pub enum Token {
@@ -22,6 +23,7 @@ const BOUNDARY_TOKEN: &str = "-- #";
 const SECTION_TOKEN: &str = "-- ##";
 const KEYBIND_TOKEN: &str = "-- ";
 
+#[instrument]
 pub async fn read_config(config_path: String) -> Result<Vec<u8>, Error> {
     fs::read(&config_path)
         .map_err(|e| {
@@ -68,6 +70,7 @@ fn parse_keybind(line: &str) -> Option<String> {
     None
 }
 
+#[instrument(skip_all)]
 pub async fn parse(buf: Vec<u8>) -> Result<Vec<Token>, Error> {
     let mut tokens = vec![];
     let mut start_found = false;
@@ -75,33 +78,41 @@ pub async fn parse(buf: Vec<u8>) -> Result<Vec<Token>, Error> {
     while let Some(line) = lines.next_line().await? {
         let l = line.trim();
         if !start_found && l.starts_with(BOUNDARY_TOKEN) {
+            debug!("start token found");
             start_found = true;
             if let Some(value) = strip(l, BOUNDARY_TOKEN) {
                 tokens.push(Token::Title(value.to_owned()));
             }
         } else if start_found {
             if l.starts_with(BOUNDARY_TOKEN) && l.ends_with(BOUNDARY_TOKEN) {
-                info!("Parsing DONE");
+                debug!("end token found");
                 return Ok(tokens);
             }
             if l.starts_with(SECTION_TOKEN) {
                 if let Some(value) = strip(l, SECTION_TOKEN) {
+                    trace!("section token found [{}]", &value);
                     tokens.push(Token::Section(value.to_owned()));
                 }
             } else if l.starts_with(KEYBIND_TOKEN) {
                 if let Some(value) = strip(l, KEYBIND_TOKEN) {
                     if let Some((keys, description)) = parse_inline_keybind(value) {
-                        tokens.push(Token::Keybind { description, keys })
+                        let t = Token::Keybind { description, keys };
+                        trace!("keybind token found {:#?}", &t);
+                        tokens.push(t)
                     } else if let Some(next_line) = lines.next_line().await? {
                         if let Some(k) = parse_keybind(&next_line) {
-                            tokens.push(Token::Keybind {
+                            let t = Token::Keybind {
                                 description: value.to_owned(),
                                 keys: k,
-                            })
+                            };
+                            trace!("keybind token found {:#?}", &t);
+                            tokens.push(t)
                         } else {
+                            trace!("text token found [{}]", value);
                             tokens.push(Token::Text(value.to_owned()));
                         }
                     } else {
+                        trace!("text token found [{}]", value);
                         tokens.push(Token::Text(value.to_owned()));
                     }
                 }
