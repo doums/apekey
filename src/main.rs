@@ -3,6 +3,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 mod app;
+mod color;
 mod error;
 mod parser;
 mod style;
@@ -16,7 +17,7 @@ use clap::Parser;
 use dotenv::dotenv;
 use iced::{Application, Settings};
 use std::env;
-use tracing::{info, warn, Level};
+use tracing::{debug, info, trace, warn, Level};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 /// apekey, lists your XMonad keymap
@@ -49,17 +50,19 @@ async fn main() -> iced::Result {
         ))
         .with(tracing_subscriber::fmt::layer())
         .init();
-    info!("running apekey");
 
     let mut user_config = UserConfig::try_read().await.unwrap_or_else(|e| {
-        warn!("Failed to read user config, {}", e);
+        warn!("Failed to read user config: {}", e);
         warn!("Fallback to default config");
         UserConfig::default()
     });
+    trace!("User config: {:#?}", &user_config);
+
     // Override xmonad.hs path if provided as CLI argument
     if let Some(p) = cli.path {
         user_config.config_path = p;
     }
+    info!("Path to XMonad config file: {}", &user_config.config_path);
 
     let mut settings = Settings {
         antialiasing: true,
@@ -71,5 +74,6 @@ async fn main() -> iced::Result {
         settings.default_text_size = size;
     }
 
+    info!("Starting apekey");
     Apekey::run(settings)
 }

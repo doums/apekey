@@ -3,11 +3,12 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use anyhow::{Context, Result};
-use rgb::RGB8;
 use serde::Deserialize;
 use std::env;
 use tokio::fs;
-use tracing::instrument;
+use tracing::{debug, error, instrument};
+
+use crate::color::WColor;
 
 // default values
 const XMONAD_HS_PATH: &str = "~/.xmonad/xmonad.hs";
@@ -19,31 +20,31 @@ pub const ERROR_COLOR: [u8; 3] = [0xe5, 0x39, 0x35]; // #e53935
 pub const FONT_SIZE: u16 = 20;
 pub const TITLE_FONT_SIZE: u16 = 32;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct UserConfig {
     pub config_path: String,
     pub colors: Option<Colors>,
     pub font: Option<FontConfig>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct Colors {
-    pub fg: Option<RGB8>,
-    pub bg: Option<RGB8>,
-    pub title: Option<RGB8>,
-    pub section: Option<RGB8>,
-    pub keybind: Option<RGB8>,
-    pub comment: Option<RGB8>,
-    pub scrollbar: Option<RGB8>,
-    pub error: Option<RGB8>,
+    pub fg: Option<WColor>,
+    pub bg: Option<WColor>,
+    pub title: Option<WColor>,
+    pub section: Option<WColor>,
+    pub keybind: Option<WColor>,
+    pub text: Option<WColor>,
+    pub scrollbar: Option<WColor>,
+    pub error: Option<WColor>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct FontConfig {
     pub title_size: Option<u16>,
     pub section_size: Option<u16>,
     pub keybind_size: Option<u16>,
-    pub comment_size: Option<u16>,
+    pub text_size: Option<u16>,
     pub error_size: Option<u16>,
 }
 
@@ -54,8 +55,12 @@ impl UserConfig {
         let xdg_config_path =
             env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| format!("{}/.config", home));
         let config_path = format!("{}/apekey/apekey.toml", xdg_config_path);
+        debug!("user config path {}", config_path);
         let content = fs::read(&config_path).await.context(config_path)?;
-        toml::from_slice(&content).context("Failed to parse user config file")
+        toml::from_slice::<UserConfig>(&content).map_err(|e| {
+            error!("{}", e);
+            anyhow::Error::new(e)
+        })
     }
 }
 
@@ -72,14 +77,14 @@ impl Default for UserConfig {
 impl Default for Colors {
     fn default() -> Self {
         Colors {
-            fg: Some(RGB8::from(FG_COLOR)),
-            bg: Some(RGB8::from(BG_COLOR)),
-            title: None,
-            section: None,
-            keybind: Some(RGB8::from(KEYBIND_COLOR)),
-            comment: None,
-            scrollbar: Some(RGB8::from(SCROLLBAR_COLOR)),
-            error: Some(RGB8::from(ERROR_COLOR)),
+            fg: Some(WColor::from(FG_COLOR)),
+            bg: Some(WColor::from(BG_COLOR)),
+            title: Some(WColor::from(FG_COLOR)),
+            section: Some(WColor::from(FG_COLOR)),
+            keybind: Some(WColor::from(KEYBIND_COLOR)),
+            text: Some(WColor::from(FG_COLOR)),
+            scrollbar: Some(WColor::from(SCROLLBAR_COLOR)),
+            error: Some(WColor::from(ERROR_COLOR)),
         }
     }
 }
@@ -90,7 +95,7 @@ impl Default for FontConfig {
             title_size: Some(TITLE_FONT_SIZE),
             section_size: Some(FONT_SIZE),
             keybind_size: Some(FONT_SIZE),
-            comment_size: Some(FONT_SIZE),
+            text_size: Some(FONT_SIZE),
             error_size: Some(FONT_SIZE),
         }
     }

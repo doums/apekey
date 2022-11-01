@@ -2,16 +2,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use iced::{button, container, scrollable, Color, Font};
+use iced::{container, scrollable, Color, Font};
 
 pub const FONT_MONO: Font = Font::External {
     name: "JetbrainsMono",
     bytes: include_bytes!("../assets/fonts/JetBrainsMono-Regular.ttf"),
-};
-
-pub const FONT_REGULAR: Font = Font::External {
-    name: "Roboto",
-    bytes: include_bytes!("../assets/fonts/Roboto-Regular.ttf"),
 };
 
 pub const FONT_MEDIUM: Font = Font::External {
@@ -60,7 +55,7 @@ pub struct Scrollable;
 impl container::StyleSheet for Container {
     fn style(&self) -> container::Style {
         container::Style {
-            background: BACKGROUND.into(),
+            // background: BACKGROUND.into(),
             text_color: TEXT.into(),
             ..container::Style::default()
         }

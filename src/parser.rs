@@ -28,8 +28,8 @@ pub async fn read_config(config_path: String) -> Result<Vec<u8>, Error> {
     fs::read(&config_path)
         .map_err(|e| {
             Error::new(format!(
-                "An error occurred while trying to read the config file: {}",
-                e
+                "An error occurred while trying to read the config file {}: {}",
+                &config_path, e
             ))
         })
         .await
