@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use iced::{container, scrollable, Color, Font};
+use iced::{Color, Font};
 
 pub const FONT_MONO: Font = Font::External {
     name: "JetbrainsMono",
@@ -52,7 +52,7 @@ pub const TEXT: Color = Color::from_rgb(
 pub struct Container;
 pub struct Scrollable;
 
-impl container::StyleSheet for Container {
+/* impl container::StyleSheet for Container {
     fn style(&self) -> container::Style {
         container::Style {
             // background: BACKGROUND.into(),
@@ -102,4 +102,4 @@ impl scrollable::StyleSheet for Scrollable {
             ..hovered
         }
     }
-}
+} */

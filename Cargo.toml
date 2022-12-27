@@ -6,11 +6,12 @@ edition = "2021"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
-iced = { version = "0.4", features = ["tokio"] }
+iced = { version = "0.6", features = ["tokio"] }
+iced_native = { version = "0.7" }
 serde = { version = "1.0", features = ["derive"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3.0", features = ['env-filter'] }
-clap = { version = "3.2.20", features = ["derive"] }
+clap = { version = "3.2", features = ["derive"] }
 regex = "1.6.0"
 lazy_static = "1.4.0"
 dotenv = "0.15.0"
