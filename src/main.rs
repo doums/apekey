@@ -3,7 +3,6 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 mod app;
-mod color;
 mod error;
 mod parser;
 mod style;
@@ -17,7 +16,7 @@ use clap::Parser;
 use dotenv::dotenv;
 use iced::{Application, Settings};
 use std::env;
-use tracing::{debug, info, trace, warn, Level};
+use tracing::{info, trace, warn, Level};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 /// apekey, lists your XMonad keymap
@@ -37,8 +36,7 @@ struct Cli {
     font_size: Option<u16>,
 }
 
-#[tokio::main]
-async fn main() -> iced::Result {
+fn main() -> iced::Result {
     dotenv().ok();
     let cli = Cli::parse();
 
@@ -51,7 +49,7 @@ async fn main() -> iced::Result {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let mut user_config = UserConfig::try_read().await.unwrap_or_else(|e| {
+    let mut user_config = UserConfig::try_read().unwrap_or_else(|e| {
         warn!("Failed to read user config: {}", e);
         warn!("Fallback to default config");
         UserConfig::default()
@@ -60,12 +58,12 @@ async fn main() -> iced::Result {
 
     // Override xmonad.hs path if provided as CLI argument
     if let Some(p) = cli.path {
-        user_config.config_path = p;
+        user_config.xmonad_config = p;
     }
-    info!("Path to XMonad config file: {}", &user_config.config_path);
+    info!("Path to XMonad config file: {}", &user_config.xmonad_config);
 
     let mut settings = Settings {
-        antialiasing: true,
+        antialiasing: false,
         default_text_size: 22,
         default_font: Some(include_bytes!("../assets/fonts/Roboto-Regular.ttf")),
         ..Settings::with_flags(AppConfig::from(user_config))

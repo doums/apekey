@@ -7,8 +7,8 @@ use crate::error::Error;
 use iced::futures::TryFutureExt;
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::{time::Duration, vec};
-use tokio::{fs, io::AsyncBufReadExt, time::sleep};
+use std::vec;
+use tokio::{fs, io::AsyncBufReadExt};
 use tracing::{debug, instrument, trace, warn};
 
 #[derive(Debug, Clone)]
@@ -25,7 +25,6 @@ const KEYBIND_TOKEN: &str = "-- ";
 
 #[instrument]
 pub async fn read_config(config_path: String) -> Result<Vec<u8>, Error> {
-    sleep(Duration::from_millis(400)).await;
     fs::read(&config_path)
         .map_err(|e| {
             Error::new(format!(
@@ -76,8 +75,6 @@ pub async fn parse(buf: Vec<u8>) -> Result<Vec<Token>, Error> {
     let mut tokens = vec![];
     let mut start_found = false;
     let mut lines = buf.lines();
-
-    sleep(Duration::from_millis(300)).await;
 
     while let Some(line) = lines.next_line().await? {
         let l = line.trim();
