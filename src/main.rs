@@ -63,7 +63,6 @@ fn main() -> iced::Result {
     info!("Path to XMonad config file: {}", &user_config.xmonad_config);
 
     let mut settings = Settings {
-        antialiasing: false,
         default_text_size: 22,
         default_font: Some(include_bytes!("../assets/fonts/Roboto-Regular.ttf")),
         ..Settings::with_flags(AppConfig::from(user_config))

@@ -202,12 +202,14 @@ impl Application for Apekey {
             State::ReadingConfig => container(Text::new("▪▫▫ Reading xmonad.hs").font(FONT_MONO))
                 .width(Length::Fill)
                 .height(Length::Fill)
+                .padding(20)
                 .center_x()
                 .center_y()
                 .into(),
             State::ParsingConfig => container(Text::new("▪▪▫ Parsing keymap   ").font(FONT_MONO))
                 .width(Length::Fill)
                 .height(Length::Fill)
+                .padding(20)
                 .center_x()
                 .center_y()
                 .into(),
@@ -237,33 +239,26 @@ impl Application for Apekey {
                 let content = self
                     .filtered_tokens
                     .iter()
-                    .fold(Column::new(), |column: _, token| {
-                        info!("{:#?}", token);
-                        match &token.token {
-                            Token::Section(v) => {
-                                column.push(vertical_space(Length::Units(14))).push(
-                                    Text::new(v)
-                                        .size(self.config.ui.section_size)
-                                        .font(FONT_MEDIUM)
-                                        .vertical_alignment(Vertical::Center),
+                    .fold(Column::new(), |column: _, token| match &token.token {
+                        Token::Section(v) => column.push(vertical_space(Length::Units(14))).push(
+                            Text::new(v)
+                                .size(self.config.ui.section_size)
+                                .font(FONT_MEDIUM)
+                                .vertical_alignment(Vertical::Center),
+                        ),
+                        Token::Keybind { description, keys } => column.push(
+                            Row::new()
+                                .spacing(20)
+                                .align_items(Alignment::Center)
+                                .push(
+                                    Text::new(keys)
+                                        .font(FONT_MONO)
+                                        .size(self.config.ui.keybind_size),
                                 )
-                            }
-                            Token::Keybind { description, keys } => column.push(
-                                Row::new()
-                                    .spacing(20)
-                                    .align_items(Alignment::Center)
-                                    .push(
-                                        Text::new(keys)
-                                            .font(FONT_MONO)
-                                            .size(self.config.ui.keybind_size),
-                                    )
-                                    .push(Text::new(description).size(self.config.ui.keybind_size)),
-                            ),
-                            Token::Text(v) => {
-                                column.push(Text::new(v).size(self.config.ui.text_size))
-                            }
-                            _ => column,
-                        }
+                                .push(Text::new(description).size(self.config.ui.keybind_size)),
+                        ),
+                        Token::Text(v) => column.push(Text::new(v).size(self.config.ui.text_size)),
+                        _ => column,
                     })
                     .width(Length::Fill)
                     .spacing(8)
@@ -282,12 +277,17 @@ impl Application for Apekey {
                 .center_y()
                 .into()
             }
-            State::Error(err) => container(Text::new(err).size(self.config.ui.error_size))
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .center_x()
-                .center_y()
-                .into(),
+            State::Error(err) => container(
+                Text::new(err)
+                    .size(self.config.ui.error_size)
+                    .width(Length::Units(400)),
+            )
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .padding(20)
+            .center_x()
+            .center_y()
+            .into(),
         }
     }
 
