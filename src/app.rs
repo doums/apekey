@@ -23,12 +23,14 @@ use tracing::{debug, error, info, instrument, trace};
 
 static INPUT_ID: Lazy<text_input::Id> = Lazy::new(text_input::Id::unique);
 const DEFAULT_TITLE: &str = "Key bindings";
+const SHOW_REGULAR_COMMENT: bool = false;
 
 #[derive(Debug)]
 pub struct AppConfig {
     pub config_path: String,
     pub ui: Ui,
     pub theme: Theme,
+    pub regular_comment: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -257,7 +259,14 @@ impl Application for Apekey {
                                 )
                                 .push(Text::new(description).size(self.config.ui.keybind_size)),
                         ),
-                        Token::Text(v) => column.push(Text::new(v).size(self.config.ui.text_size)),
+                        // TODO fix parser first
+                        // Token::Text(v) => {
+                        //     if self.config.regular_comment {
+                        //         column.push(Text::new(v).size(self.config.ui.text_size))
+                        //     } else {
+                        //         column
+                        //     }
+                        // }
                         _ => column,
                     })
                     .width(Length::Fill)
@@ -337,6 +346,7 @@ impl From<UserConfig> for AppConfig {
                     user_config::Theme::Light => Theme::Light,
                 })
                 .unwrap_or_else(|| Theme::Dark),
+            regular_comment: config.regular_comment.unwrap_or(SHOW_REGULAR_COMMENT),
             ui: Ui {
                 title_size: font_config.title_size.unwrap_or(TITLE_FONT_SIZE),
                 section_size: font_config.section_size.unwrap_or(FONT_SIZE),

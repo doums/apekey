@@ -23,6 +23,7 @@ pub struct UserConfig {
     pub xmonad_config: String,
     pub font: Option<FontConfig>,
     pub theme: Option<Theme>,
+    pub regular_comment: Option<bool>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -56,6 +57,7 @@ impl Default for UserConfig {
             xmonad_config: XMONAD_HS_PATH.into(),
             font: Some(FontConfig::default()),
             theme: None,
+            regular_comment: None,
         }
     }
 }

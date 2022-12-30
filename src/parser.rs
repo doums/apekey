@@ -70,6 +70,7 @@ fn parse_keybind(line: &str) -> Option<String> {
     None
 }
 
+// TODO fix case when 2 text tokens follow each other (only one is retained)
 #[instrument(skip_all)]
 pub async fn parse(buf: Vec<u8>) -> Result<Vec<Token>, Error> {
     let mut tokens = vec![];
