@@ -2,8 +2,8 @@
 
 List and browse your XMonad keymap.
 
-⚠ For now apekey only supports keybindings specified in _emacs-like_
-formats
+⚠ For now apekey only supports keybindings specified in
+_emacs-style_ formats
 ([EZConfig](https://xmonad.github.io/xmonad-docs/xmonad-contrib/XMonad-Util-EZConfig.html))
 
 ### Install
@@ -56,7 +56,7 @@ comment.
 
 ##### `-- "<keys>" Description`
 
-Some keybindings are not declared "inline" using the emacs format.
+Some keybindings are not declared "inline" or using the emacs format.
 e.g. mouse binding, workspaces/topics/screen navigation bindings
 etc... are common cases. For these it is not possible to use the
 simple `-- description` comments.
