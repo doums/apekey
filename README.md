@@ -11,14 +11,8 @@ _emacs-style_ format
 
 ### Install
 
-#### Release
-
-Use the latest binary from
-[releases](https://github.com/doums/apekey/releases/latest)
-
-#### AUR
-
-[package](https://aur.archlinux.org/packages/apekey)
+- latest [release](https://github.com/doums/apekey/releases/latest)
+- AUR [package](https://aur.archlinux.org/packages/apekey)
 
 ### Usage
 
