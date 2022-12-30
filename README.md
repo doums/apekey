@@ -3,7 +3,7 @@
 List and browse your XMonad keymap.
 
 ⚠ For now apekey only supports keybindings specified in
-_emacs-style_ formats
+_emacs-style_ format
 ([EZConfig](https://xmonad.github.io/xmonad-docs/xmonad-contrib/XMonad-Util-EZConfig.html))
 
 ### Install
