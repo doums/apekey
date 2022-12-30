@@ -1,6 +1,6 @@
 [package]
 name = "apekey"
-description = "List and browse you XMonad keymap"
+description = "List and browse your XMonad keymap"
 version = "0.1.0"
 authors = ["pierre <dommerc.pierre@gmail.com>"]
 edition = "2021"
