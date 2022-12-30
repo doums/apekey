@@ -16,9 +16,9 @@ _emacs-style_ format
 
 ### Usage
 
-apekey reads your `xmonad.hs` config and looks for comments
-with special formats to automatically parse and generate the
-keymap.
+Apekey reads your `xmonad.hs` config and looks for comments with
+special formats. Based on these comments, apekey will parse and
+generate the keymap, to display it in a dedicated window.
 
 ##### `-- # [Title]`
 
