@@ -2,8 +2,6 @@ name: "apekey"
 
 on:
   push:
-    branches:
-      - main
     tags:
       - v*
   pull_request:
