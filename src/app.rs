@@ -3,7 +3,6 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use crate::parser::{self, Token};
-use crate::style::{FONT_BLACK, FONT_MEDIUM, FONT_MONO};
 use crate::user_config::{self, UserConfig, FONT_SIZE, TITLE_FONT_SIZE};
 
 use fuzzy_matcher::skim::SkimMatcherV2;
@@ -15,8 +14,7 @@ use iced::widget::{
 use iced::{
     alignment::Vertical, executor, Alignment, Application, Command, Element, Length, Padding,
 };
-use iced::{event, keyboard, subscription, Subscription, Theme};
-use iced_native::Event;
+use iced::{event, keyboard, subscription, Event, Font, Subscription, Theme};
 use once_cell::sync::Lazy;
 use std::fmt;
 use tracing::{debug, error, info, instrument, trace};
@@ -24,6 +22,16 @@ use tracing::{debug, error, info, instrument, trace};
 static INPUT_ID: Lazy<text_input::Id> = Lazy::new(text_input::Id::unique);
 const DEFAULT_TITLE: &str = "Key bindings";
 const SHOW_REGULAR_COMMENT: bool = false;
+// Monospace font
+pub const FONT_MONO: Font = Font::External {
+    name: "JetbrainsMono",
+    bytes: include_bytes!("../assets/fonts/JetBrainsMono-Regular.ttf"),
+};
+// Sans Serif font
+pub const FONT_SS: Font = Font::External {
+    name: "Roboto",
+    bytes: include_bytes!("../assets/fonts/Roboto-Regular.ttf"),
+};
 
 #[derive(Debug)]
 pub struct AppConfig {
@@ -40,6 +48,7 @@ pub struct Ui {
     pub keybind_size: u16,
     pub text_size: u16,
     pub error_size: u16,
+    pub keybind_text_min_width: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -236,7 +245,7 @@ impl Application for Apekey {
                 };
                 let title = text(title_str)
                     .size(self.config.ui.title_size)
-                    .font(FONT_BLACK);
+                    .font(FONT_SS);
 
                 let content = self
                     .filtered_tokens
@@ -245,7 +254,7 @@ impl Application for Apekey {
                         Token::Section(v) => column.push(vertical_space(Length::Units(14))).push(
                             Text::new(v)
                                 .size(self.config.ui.section_size)
-                                .font(FONT_MEDIUM)
+                                .font(FONT_SS)
                                 .vertical_alignment(Vertical::Center),
                         ),
                         Token::Keybind { description, keys } => column.push(
@@ -353,6 +362,7 @@ impl From<UserConfig> for AppConfig {
                 keybind_size: font_config.keybind_size.unwrap_or(FONT_SIZE),
                 text_size: font_config.text_size.unwrap_or(FONT_SIZE),
                 error_size: font_config.error_size.unwrap_or(FONT_SIZE),
+                keybind_text_min_width: config.keybind_text_min_width.unwrap_or(100),
             },
         }
     }

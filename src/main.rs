@@ -5,7 +5,6 @@
 mod app;
 mod error;
 mod parser;
-mod style;
 mod user_config;
 
 use crate::{
