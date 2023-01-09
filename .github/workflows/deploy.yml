@@ -1,0 +1,76 @@
+name: Deployment
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  test:
+    # TODO check for test wf not called twice
+    uses: ./.github/workflows/test.yml
+
+  build:
+    name: Build
+    needs: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+  #     - name: Build
+  #       run: cargo build --release --locked
+  #     - name: Upload binary artifact
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: apekey
+  #         path: ./target/release/apekey
+
+  # gh-release:
+  #   name: Publish Github Release
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v3
+  #     - name: Download binary artifact
+  #       uses: actions/download-artifact@v3
+  #       with:
+  #         name: apekey
+  #         path: ./target/release/
+  #     - name: Release
+  #       uses: softprops/action-gh-release@v1
+  #       with:
+  #         files: target/release/apekey
+
+  # aur-packaging:
+  #   name: Publish AUR package
+  #   needs: gh-release
+  #   runs-on: ubuntu-latest
+  #   env:
+  #     PKG_NAME: apekey
+  #     PKGBUILD: ./.pkg/aur/PKGBUILD
+  #     RELEASE_TAG: ${{ github.ref_name }}
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v3
+  #     - uses: robinraju/release-downloader@v1.7
+  #       with:
+  #         tag: ${{ github.ref_name }}
+  #         tarBall: true
+  #     - name: Generate PKGBUILD
+  #       run: ./.pkg/aur/update_pkgbuild.sh
+  #     - name: Show PKGBUILD
+  #       run: cat "$PKGBUILD"
+  #     - name: Publish AUR package
+  #       uses: KSXGitHub/github-actions-deploy-aur@v2.6.0
+  #       with:
+  #         pkgname: ${{ env.PKG_NAME }}
+  #         pkgbuild: ${{ env.PKGBUILD }}
+  #         commit_username: ${{ secrets.AUR_USERNAME }}
+  #         commit_email: ${{ secrets.AUR_EMAIL }}
+  #         ssh_private_key: ${{ secrets.AUR_SSH_HEY }}
+  #         commit_message: ${{ github.ref_name }}

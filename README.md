@@ -1,4 +1,4 @@
-[![apekey](https://img.shields.io/github/actions/workflow/status/doums/apekey/build.yml?color=0D0D0D&logoColor=BFBFBF&labelColor=404040&logo=github&style=for-the-badge)](https://github.com/doums/apekey/actions?query=workflow%3Aapekey)
+[![apekey](https://img.shields.io/github/actions/workflow/status/doums/apekey/deploy.yml?color=0D0D0D&logoColor=BFBFBF&labelColor=404040&logo=github&style=for-the-badge)](https://github.com/doums/apekey/actions?query=workflow%3Aapekey)
 [![apekey](https://img.shields.io/aur/version/apekey?color=0D0D0D&logoColor=BFBFBF&labelColor=404040&logo=arch-linux&style=for-the-badge)](https://aur.archlinux.org/packages/apekey/)
 
 ## apekey
