@@ -45,31 +45,31 @@ jobs:
         with:
           files: target/release/apekey
 
-  # aur-packaging:
-  #   name: Publish AUR package
-  #   needs: gh-release
-  #   runs-on: ubuntu-latest
-  #   env:
-  #     PKG_NAME: apekey
-  #     PKGBUILD: ./.pkg/aur/PKGBUILD
-  #     RELEASE_TAG: ${{ github.ref_name }}
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v3
-  #     - uses: robinraju/release-downloader@v1.7
-  #       with:
-  #         tag: ${{ github.ref_name }}
-  #         tarBall: true
-  #     - name: Generate PKGBUILD
-  #       run: ./.pkg/aur/update_pkgbuild.sh
-  #     - name: Show PKGBUILD
-  #       run: cat "$PKGBUILD"
-  #     - name: Publish AUR package
-  #       uses: KSXGitHub/github-actions-deploy-aur@v2.6.0
-  #       with:
-  #         pkgname: ${{ env.PKG_NAME }}
-  #         pkgbuild: ${{ env.PKGBUILD }}
-  #         commit_username: ${{ secrets.AUR_USERNAME }}
-  #         commit_email: ${{ secrets.AUR_EMAIL }}
-  #         ssh_private_key: ${{ secrets.AUR_SSH_HEY }}
-  #         commit_message: ${{ github.ref_name }}
+  aur-packaging:
+    name: Publish AUR package
+    needs: gh-release
+    runs-on: ubuntu-latest
+    env:
+      PKG_NAME: apekey
+      PKGBUILD: ./.pkg/aur/PKGBUILD
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - uses: robinraju/release-downloader@v1.7
+        with:
+          tag: ${{ github.ref_name }}
+          tarBall: true
+      - name: Update PKGBUILD
+        run: ./.pkg/aur/update_pkgbuild.sh
+      - name: Show PKGBUILD
+        run: cat "$PKGBUILD"
+      - name: Publish
+        uses: KSXGitHub/github-actions-deploy-aur@v2.6.0
+        with:
+          pkgname: ${{ env.PKG_NAME }}
+          pkgbuild: ${{ env.PKGBUILD }}
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_KEY }}
+          commit_message: ${{ github.ref_name }}
