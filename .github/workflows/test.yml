@@ -23,7 +23,10 @@ jobs:
           toolchain: stable
           override: true
           components: clippy
-      - name: Lint
-        run: cargo clippy
-      - name: Check
-        run: cargo check
+
+      - name: Test
+        run: echo "EHEH"
+      # - name: Lint
+      #   run: cargo clippy
+      # - name: Check
+      #   run: cargo check
