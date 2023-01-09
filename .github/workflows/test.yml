@@ -22,10 +22,7 @@ jobs:
         with:
           toolchain: stable
           components: clippy
-
-      - name: Test
-        run: echo "EHEH"
-      # - name: Lint
-      #   run: cargo clippy
-      # - name: Check
-      #   run: cargo check
+      - name: Lint
+        run: cargo clippy
+      - name: Check
+        run: cargo check

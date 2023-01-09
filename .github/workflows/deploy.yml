@@ -7,7 +7,6 @@ on:
 
 jobs:
   test:
-    # TODO check for test wf not called twice
     uses: ./.github/workflows/test.yml
 
   build:
@@ -21,30 +20,30 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
-  #     - name: Build
-  #       run: cargo build --release --locked
-  #     - name: Upload binary artifact
-  #       uses: actions/upload-artifact@v3
-  #       with:
-  #         name: apekey
-  #         path: ./target/release/apekey
+      - name: Build
+        run: cargo build --release --locked
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: apekey
+          path: ./target/release/apekey
 
-  # gh-release:
-  #   name: Publish Github Release
-  #   needs: build
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v3
-  #     - name: Download binary artifact
-  #       uses: actions/download-artifact@v3
-  #       with:
-  #         name: apekey
-  #         path: ./target/release/
-  #     - name: Release
-  #       uses: softprops/action-gh-release@v1
-  #       with:
-  #         files: target/release/apekey
+  gh-release:
+    name: Publish Github Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Download binary artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: apekey
+          path: ./target/release/
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: target/release/apekey
 
   # aur-packaging:
   #   name: Publish AUR package
