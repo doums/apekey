@@ -5,6 +5,8 @@
 
 List and browse your XMonad keymap.
 
+<img src="https://user-images.githubusercontent.com/6359431/211675677-0e8b44d4-7551-4da4-9d5a-51c83c95b895.png" width="650">
+
 ⚠ For now apekey only supports keybindings specified in
 _emacs-style_ format
 ([EZConfig](https://xmonad.github.io/xmonad-docs/xmonad-contrib/XMonad-Util-EZConfig.html))
