@@ -1,5 +1,7 @@
 #! /bin/bash
 
+# script to bump version and update sources hash of a PKGBUILD
+
 set -e
 
 red="\e[38;5;1m"
@@ -33,9 +35,10 @@ if ! [[ "$RELEASE_TAG" =~ ^v.*? ]]; then
 fi
 
 pkgver="${RELEASE_TAG#v}"
+tarball="$PKG_NAME-$RELEASE_TAG".tar.gz
 
-if ! [ -a "$PKG_NAME-v$pkgver".tar.gz ]; then
-  >&2 printf "  %b%b✕%b no such file $PKG_NAME-v$pkgver.tar.gz\n" "$red" "$bold" "$reset"
+if ! [ -a "$tarball" ]; then
+  >&2 printf "  %b%b✕%b no such file $tarball\n" "$red" "$bold" "$reset"
   exit 1
 fi
 
@@ -44,7 +47,7 @@ sed -i "s/pkgver=.*/pkgver=$pkgver/" "$PKGBUILD"
 printf "  %b%b✓%b bump version to $RELEASE_TAG\n" "$green" "$bold" "$reset"
 
 # generate new checksum
-sum=$(set -o pipefail && sha256sum "$PKG_NAME-v$pkgver".tar.gz | awk '{print $1}')
+sum=$(set -o pipefail && sha256sum "$tarball" | awk '{print $1}')
 sed -i "s/sha256sums=('.*')/sha256sums=('$sum')/" "$PKGBUILD"
 printf "  %b%b✓%b generated checksum $sum\n" "$green" "$bold" "$reset"
 

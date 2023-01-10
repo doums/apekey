@@ -53,19 +53,14 @@ jobs:
       PKG_NAME: apekey
       PKGBUILD: ./.pkg/aur/PKGBUILD
       RELEASE_TAG: ${{ github.ref_name }}
+      REPOSITORY: ${{ github.repository }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - uses: robinraju/release-downloader@v1.7
-        with:
-          tag: ${{ github.ref_name }}
-          tarBall: true
-      - name: WIP
-        run: ls -la
-      - name: WIP
-        run: sha256sum --version
+      - name: Download sources
+        run: curl -LfsSo "$PKG_NAME-$RELEASE_TAG".tar.gz "https://github.com/$REPOSITORY/archive/refs/tags/$RELEASE_TAG.tar.gz"
       - name: Update PKGBUILD
-        run: ./.pkg/aur/update_pkgbuild.sh
+        run: ./.pkg/aur/update.sh
       - name: Show PKGBUILD
         run: cat "$PKGBUILD"
       - name: Publish
