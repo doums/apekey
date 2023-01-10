@@ -60,6 +60,10 @@ jobs:
         with:
           tag: ${{ github.ref_name }}
           tarBall: true
+      - name: WIP
+        run: ls -la
+      - name: WIP
+        run: sha256sum --version
       - name: Update PKGBUILD
         run: ./.pkg/aur/update_pkgbuild.sh
       - name: Show PKGBUILD
