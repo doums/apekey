@@ -8,7 +8,7 @@ use std::{env, fs};
 use tracing::{debug, error, instrument};
 
 // default values
-const XMONAD_HS_PATH: &str = "~/.xmonad/xmonad.hs";
+const XMONAD_HS_PATH: &str = "~/.config/xmonad/xmonad.hs";
 pub const FONT_SIZE: u16 = 20;
 pub const TITLE_FONT_SIZE: u16 = 28;
 

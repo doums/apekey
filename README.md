@@ -120,7 +120,7 @@ The most important option is `xmonad_config`, set it to the path
 to your `xmonad.hs` configuration file.
 
 ```toml
-xmonad_config = "/opt/xmonad/xmonad.hs"
+xmonad_config = "~/.config/xmonad/xmonad.hs"
 ```
 
 All other options are optional and can be found here

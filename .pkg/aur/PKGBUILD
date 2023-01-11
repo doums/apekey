@@ -8,7 +8,9 @@ arch=('x86_64')
 url='https://github.com/doums/apekey'
 license=('MPL2')
 depends=('fontconfig')
-makedepends=('rust')
+makedepends=('rust' 'cargo')
+provides=('apekey')
+conflicts=('apekey')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=('c6bf527f0092f4283adc42f515663c2115cb1ab354ea5929f103312e54e1b596')
 
@@ -19,6 +21,7 @@ build() {
 
 package() {
   cd "$pkgname-$pkgver"
-  install -Dvm 755 "target/release/$pkgname" -t "$pkgdir/usr/bin/"
+  install -Dvm 755 "target/release/apekey" "$pkgdir/usr/bin/apekey"
+  install -Dvm 644 "apekey.toml" "$pkgdir/usr/share/doc/apekey/config/apekey.toml"
 }
 

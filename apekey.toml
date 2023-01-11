@@ -1,0 +1,8 @@
+# Apekey configuration
+
+# Path to your XMonad configuration file, `xmonad.hs`
+xmonad_config = "~/.config/xmonad/xmonad.hs"
+
+# Other available options are defined in `src/user_config.rs`,
+# check for `UserConfig` structure
+# https://github.com/doums/apekey/blob/main/src/user_config.rs
