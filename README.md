@@ -76,6 +76,16 @@ Adds a section.
 -- ## Basics
 ```
 
+##### `-- ! Comment ignored`
+
+A simple text comment, ignored. If in the next line a keybind is
+defined, it is also ignored.
+
+```haskell
+  -- ! Light up
+  , ("<XF86MonBrightnessUp>",   spawn "pral.sh light_up")
+```
+
 #### Illustrative example
 
 `xmonad.hs`
@@ -123,12 +133,12 @@ to your `xmonad.hs` configuration file.
 xmonad_config = "~/.config/xmonad/xmonad.hs"
 ```
 
-All other options are optional and can be found here
-https://github.com/doums/apekey/blob/67f8be7d855abed5ee34b1504fd033aa2bc11dac/src/user_config.rs#L22
+Other available options are defined in `src/user_config.rs`, check
+for `UserConfig` structure
+https://github.com/doums/apekey/blob/main/src/user_config.rs
 
 ### TODO
 
-- add a config option to set a minimum keybind width
 - highlight fuzzy matches
 
 ### License

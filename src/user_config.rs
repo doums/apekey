@@ -24,7 +24,6 @@ pub struct UserConfig {
     pub font: Option<FontConfig>,
     pub theme: Option<Theme>,
     pub regular_comment: Option<bool>, // not yet implemented
-    pub keybind_text_min_width: Option<usize>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -59,7 +58,6 @@ impl Default for UserConfig {
             font: Some(FontConfig::default()),
             theme: None,
             regular_comment: None,
-            keybind_text_min_width: None,
         }
     }
 }

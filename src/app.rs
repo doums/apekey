@@ -48,7 +48,18 @@ pub struct Ui {
     pub keybind_size: u16,
     pub text_size: u16,
     pub error_size: u16,
-    pub keybind_text_min_width: usize,
+}
+
+impl Default for Ui {
+    fn default() -> Self {
+        Ui {
+            title_size: TITLE_FONT_SIZE,
+            section_size: FONT_SIZE,
+            keybind_size: FONT_SIZE,
+            text_size: FONT_SIZE,
+            error_size: FONT_SIZE,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -60,10 +71,8 @@ pub struct TokenItem {
 impl fmt::Display for TokenItem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.token {
-            Token::Title(s) => write!(f, "{}", s),
-            Token::Section(s) => write!(f, "{}", s),
-            Token::Keybind { description, keys } => write!(f, "{} {}", keys, description),
-            Token::Text(s) => write!(f, "{}", s),
+            Token::Title(s) | Token::Section(s) | Token::Text(s) => write!(f, "{s}"),
+            Token::Keybind { description, keys } => write!(f, "{keys} {description}"),
         }
     }
 }
@@ -103,11 +112,11 @@ impl fmt::Display for Message {
             Message::ConfigError(_) => "ConfigError".into(),
             Message::ParsingDone(tokens) => format!("ParsingDone: {}", tokens.len()),
             Message::ParsingError(_) => "ParsingError".into(),
-            Message::InputChanged(input) => format!("InputChanged: {}", input),
+            Message::InputChanged(input) => format!("InputChanged: {input}"),
             Message::TokensFiltered(tokens) => format!("TokensFiltered: {}", tokens.len()),
-            Message::TabPressed { shift } => format!("TabPressed, shift {}", shift),
+            Message::TabPressed { shift } => format!("TabPressed, shift {shift}"),
         };
-        write!(f, "{}", message)
+        write!(f, "{message}")
     }
 }
 
@@ -357,12 +366,11 @@ impl From<UserConfig> for AppConfig {
                 .unwrap_or_else(|| Theme::Dark),
             regular_comment: config.regular_comment.unwrap_or(SHOW_REGULAR_COMMENT),
             ui: Ui {
-                title_size: font_config.title_size.unwrap_or(TITLE_FONT_SIZE),
-                section_size: font_config.section_size.unwrap_or(FONT_SIZE),
-                keybind_size: font_config.keybind_size.unwrap_or(FONT_SIZE),
-                text_size: font_config.text_size.unwrap_or(FONT_SIZE),
-                error_size: font_config.error_size.unwrap_or(FONT_SIZE),
-                keybind_text_min_width: config.keybind_text_min_width.unwrap_or(100),
+                title_size: font_config.title_size.unwrap_or_default(),
+                section_size: font_config.section_size.unwrap_or_default(),
+                keybind_size: font_config.keybind_size.unwrap_or_default(),
+                text_size: font_config.text_size.unwrap_or_default(),
+                error_size: font_config.error_size.unwrap_or_default(),
             },
         }
     }
