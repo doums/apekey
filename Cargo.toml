@@ -11,8 +11,7 @@ license = "MPL-2.0"
 tokio = { version = "1", features = ["fs", "io-util"] }
 iced = { version = "0.6", features = ["tokio"] }
 serde = { version = "1.0", features = ["derive"] }
-nom = "7.1.2"
-nom_locate = "4.1.0"
+nom = { version = "7.1.2", features = ["alloc"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3.0", features = ['env-filter'] }
 clap = { version = "4.1", features = ["derive"] }

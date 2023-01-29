@@ -2,26 +2,16 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::error::Error;
-
-use iced::futures::TryFutureExt;
-use lazy_static::lazy_static;
 use nom::{
-    branch::{alt, permutation},
-    bytes::complete::{tag, take_till, take_until, take_until1},
-    character::{
-        complete::{anychar, multispace0, newline, not_line_ending, space0},
-        is_alphabetic, is_newline,
-    },
-    combinator::{eof, map, map_res, not, opt, rest, success},
+    branch::alt,
+    bytes::complete::{tag, take_until},
+    character::complete::{multispace0, newline, not_line_ending, space0},
+    combinator::{map, not, opt},
     error::ParseError,
-    multi::{many0, many1},
+    multi::many_till,
     sequence::{delimited, preceded, terminated, tuple},
     IResult,
 };
-use regex::Regex;
-use std::{any, vec};
-use tokio::{fs, io::AsyncBufReadExt};
 use tracing::{debug, instrument, trace, warn};
 
 #[derive(Debug, Clone)]
@@ -36,53 +26,6 @@ const BOUNDARY_TOKEN: &str = "#";
 const SECTION_TOKEN: &str = "##";
 const HS_COMMENT_SEQ: &str = "--";
 const IGNORE_TOKEN: &str = "!";
-
-#[instrument]
-pub async fn read_config(config_path: String) -> Result<Vec<u8>, Error> {
-    fs::read(&config_path)
-        .map_err(|e| {
-            Error::new(format!(
-                "An error occurred while trying to read the config file {}: {}",
-                &config_path, e
-            ))
-        })
-        .await
-}
-
-fn strip<'a>(line: &'a str, prefix: &str) -> Option<&'a str> {
-    if let Some(v) = line.strip_prefix(prefix) {
-        if !v.trim().is_empty() {
-            return Some(v.trim());
-        }
-    }
-    None
-}
-
-fn parse_inline_keybind(line: &str) -> Option<(String, String)> {
-    let re: Regex = Regex::new(r#"^"(.+?)"(.+)"#).unwrap();
-    let caps = re.captures(line);
-    if let Some(c) = caps {
-        let keys = c.get(1).map(|c| String::from(c.as_str().trim()));
-        let description = c.get(2).map(|c| String::from(c.as_str().trim()));
-        if let Some(k) = keys {
-            if let Some(d) = description {
-                return Some((k, d));
-            }
-        }
-    }
-    None
-}
-
-fn parse_keybind(line: &str) -> Option<String> {
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r#""(.+?)""#).unwrap();
-    }
-    let mat = RE.find(line);
-    if let Some(m) = mat {
-        return Some(String::from(&line[m.start() + 1..m.end() - 1]));
-    }
-    None
-}
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct KeybindToken<'input>(&'input str, &'input str);
@@ -99,49 +42,6 @@ pub struct Parser<'input> {
     sections: Vec<Section<'input>>,
 }
 
-// impl Parser {
-//     fn new() -> Self {
-//         Parser::default()
-//     }
-
-//     fn parse_boundary(mut self, input: &str) -> IResult<&str, (&str, &str, (), Option<&str>)> {
-//         let res = tuple((
-//             space0,
-//             tag(BOUNDARY_TOKEN),
-//             not(tag("#")),
-//             opt(take_until("\n")),
-//         ))(input);
-//         match res {
-//             Ok(r) => self.title = r.1 .3.map(String::from),
-//             _ => todo!(),
-//         }
-//         res
-//     }
-// }
-
-// fn parse_area(input: &str) -> IResult<&str, &str> {
-//     let res = tuple((parse_boundary, many0(parse_section), parse_boundary))(input);
-//     res
-// }
-
-pub fn parse_entry(input: &str) -> IResult<&str, Parser> {
-    map(
-        ws(tuple((
-            parse_boundary,
-            many0(alt((
-                map(parse_section, Some),
-                // map(terminated(not_line_ending, newline), |_| None),
-                // map(newline, |_| None),
-            ))),
-            parse_boundary,
-        ))),
-        |(title, sections, _)| Parser {
-            title,
-            sections: sections.into_iter().flatten().collect(),
-        },
-    )(input)
-}
-
 /// A combinator that takes a parser `inner` and produces a parser that also consumes both leading and
 /// trailing whitespace, returning the output of `inner`.
 fn ws<'a, F, O, E: ParseError<&'a str>>(inner: F) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
@@ -149,6 +49,27 @@ where
     F: FnMut(&'a str) -> IResult<&'a str, O, E>,
 {
     delimited(multispace0, inner, multispace0)
+}
+
+fn parse_inner(input: &str) -> IResult<&str, Option<Section>> {
+    ws(alt((
+        map(parse_section, Some),
+        map(terminated(not_line_ending, newline), |_| None),
+    )))(input)
+}
+
+#[instrument(skip_all)]
+pub fn parse(input: &str) -> IResult<&str, Parser> {
+    map(
+        ws(tuple((
+            many_till(terminated(not_line_ending, newline), parse_boundary),
+            many_till(parse_inner, parse_boundary),
+        ))),
+        |((_, title), (s, _))| Parser {
+            title,
+            sections: s.into_iter().flatten().collect(),
+        },
+    )(input)
 }
 
 fn parse_hs_comment_seq(input: &str) -> IResult<&str, ()> {
@@ -166,43 +87,46 @@ fn parse_hs_comment_seq(input: &str) -> IResult<&str, ()> {
 
 fn parse_boundary(input: &str) -> IResult<&str, Option<&str>> {
     map(
-        tuple((
+        ws(tuple((
             parse_hs_comment_seq,
             not(tag(SECTION_TOKEN)),
             tag(BOUNDARY_TOKEN),
             space0,
             opt(terminated(not_line_ending, newline)), // main title
-        )),
-        |(_, _, _, _, res)| res,
+        ))),
+        |(_, _, _, _, title)| title.and_then(|v| if v.is_empty() { None } else { Some(v) }),
     )(input)
 }
 
 fn parse_section_tag(input: &str) -> IResult<&str, Option<&str>> {
     map(
-        tuple((
+        ws(tuple((
             parse_hs_comment_seq,
             tag(SECTION_TOKEN),
             space0,
             opt(terminated(not_line_ending, newline)), // section title
-        )),
+        ))),
         |(_, _, _, title)| title.and_then(|v| if v.is_empty() { None } else { Some(v) }),
     )(input)
+}
+
+fn parse_section_inner(input: &str) -> IResult<&str, Option<KeybindToken>> {
+    ws(alt((
+        map(parse_keybind_declaration, Some),
+        map(parse_keybind_comment, Some),
+        map(terminated(not_line_ending, newline), |_| None),
+    )))(input)
 }
 
 fn parse_section(input: &str) -> IResult<&str, Section> {
     map(
         ws(tuple((
             parse_section_tag,
-            many0(alt((
-                map(parse_keybind_declaration, Some),
-                map(parse_keybind_comment, Some),
-                map(terminated(not_line_ending, newline), |_| None),
-            ))),
-            parse_section_tag,
+            many_till(parse_section_inner, parse_section_tag),
         ))),
-        |(title, keybinds, _)| Section {
+        |(title, (k, _))| Section {
             title,
-            keybinds: keybinds.into_iter().flatten().collect(),
+            keybinds: k.into_iter().flatten().collect(),
         },
     )(input)
 }
@@ -259,61 +183,6 @@ fn parse_keybind_comment(input: &str) -> IResult<&str, KeybindToken> {
     )(input)
 }
 
-#[instrument(skip_all)]
-pub async fn parse(buf: Vec<u8>) -> Result<Vec<Token>, Error> {
-    let mut tokens = vec![];
-    let mut start_found = false;
-    let mut lines = buf.lines();
-
-    while let Some(line) = lines.next_line().await? {
-        let l = line.trim();
-        if !start_found && l.starts_with(BOUNDARY_TOKEN) {
-            debug!("start token found");
-            start_found = true;
-            if let Some(value) = strip(l, BOUNDARY_TOKEN) {
-                tokens.push(Token::Title(value.to_owned()));
-            }
-        } else if start_found {
-            if l.starts_with(BOUNDARY_TOKEN) && l.ends_with(BOUNDARY_TOKEN) {
-                debug!("end token found");
-                return Ok(tokens);
-            }
-            if l.starts_with(SECTION_TOKEN) {
-                if let Some(value) = strip(l, SECTION_TOKEN) {
-                    trace!("section token found [{}]", &value);
-                    tokens.push(Token::Section(value.to_owned()));
-                }
-            } else if l.starts_with(HS_COMMENT_SEQ) && !l.starts_with(IGNORE_TOKEN) {
-                if let Some(value) = strip(l, HS_COMMENT_SEQ) {
-                    if let Some((keys, description)) = parse_inline_keybind(value) {
-                        let t = Token::Keybind { description, keys };
-                        trace!("keybind token found {:#?}", &t);
-                        tokens.push(t)
-                    } else if let Some(next_line) = lines.next_line().await? {
-                        if let Some(k) = parse_keybind(&next_line) {
-                            let t = Token::Keybind {
-                                description: value.to_owned(),
-                                keys: k,
-                            };
-                            trace!("keybind token found {:#?}", &t);
-                            tokens.push(t)
-                        } else {
-                            trace!("text token found [{}]", value);
-                            tokens.push(Token::Text(value.to_owned()));
-                        }
-                    } else {
-                        trace!("text token found [{}]", value);
-                        tokens.push(Token::Text(value.to_owned()));
-                    }
-                }
-            }
-        }
-    }
-
-    warn!("The parsing ended without the end token");
-    Ok(tokens)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -344,6 +213,30 @@ mod tests {
     }
 
     #[test]
+    fn boundary_parsing_multilines1() {
+        assert_eq!(
+            parse_boundary(
+                r#"
+                -- #   
+                "#
+            ),
+            Ok(("", None))
+        );
+    }
+
+    #[test]
+    fn boundary_parsing_multilines2() {
+        assert_eq!(
+            parse_boundary(
+                r#"
+                -- # Title
+                "#
+            ),
+            Ok(("", Some("Title")))
+        );
+    }
+
+    #[test]
     fn section_tag_parsing() {
         assert!(parse_section_tag("--").is_err());
         assert!(parse_section_tag("-- ").is_err());
@@ -361,6 +254,30 @@ mod tests {
         assert!(parse_section_tag("-- # #").is_err());
         assert!(parse_section_tag("--#").is_err());
         assert!(parse_section_tag("-- #Fool").is_err());
+    }
+
+    #[test]
+    fn section_tag_parsing_multilines1() {
+        assert_eq!(
+            parse_section_tag(
+                r#"
+                -- ##   
+                "#
+            ),
+            Ok(("", None))
+        );
+    }
+
+    #[test]
+    fn section_tag_parsing_multilines2() {
+        assert_eq!(
+            parse_section_tag(
+                r#"
+                -- ## A Section
+                "#
+            ),
+            Ok(("", Some("A Section")))
+        );
     }
 
     #[test]
@@ -483,13 +400,15 @@ mod tests {
     fn parse_empty_section4() {
         assert_eq!(
             parse_section(
-                r#" -- ##
-                    -- ##"#
+                r#" 
+                -- ## Section
+                -- ##
+                "#
             ),
             Ok((
                 "",
                 Section {
-                    title: None,
+                    title: Some("Section"),
                     keybinds: vec![]
                 }
             ))
@@ -500,13 +419,13 @@ mod tests {
     fn parse_empty_section5() {
         assert_eq!(
             parse_section(
-                r#" -- ##
+                r#" -- ## Section
                     -- ## "#
             ),
             Ok((
                 "",
                 Section {
-                    title: None,
+                    title: Some("Section"),
                     keybinds: vec![]
                 }
             ))
@@ -610,7 +529,8 @@ mod tests {
                 r#"
   -- ## A section
   -- "M-1" desc 1
-  -- ##"#
+  -- ##
+  "#
             ),
             Ok((
                 "",
@@ -693,19 +613,63 @@ mod tests {
     }
 
     #[test]
+    fn parse_simple_case() {
+        assert_eq!(
+            parse(
+                r#"
+        some code
+        some code
+        -- # Xmonad keymap
+        -- #
+        some code"#
+            ),
+            Ok((
+                "some code",
+                Parser {
+                    title: Some("Xmonad keymap"),
+                    sections: vec![]
+                }
+            ))
+        );
+    }
+
+    #[test]
     fn parse_real_case() {
         assert_eq!(
-            parse_entry(
+            parse(
                 r#"
-  -- # Xmonad keymap
+        -- # Xmonad keymap
 
+        -- ## Section One
+        -- "M-1" desc 1
+        -- desc a
+        , ("M-a",     spawn "lock.sh")
+        -- "M-2" desc 2
+        -- desc b
+        , ("M-b",     sendMessage (IncMasterN 1))
+        -- ##
 
+        -- ## Section Two
+        -- "M-1" desc 1
+        -- "M-2" desc 2
+        --! Nope
+        -- desc b
+        , ("M-b",     sendMessage (IncMasterN 1))
+        -- A simple comment
+        -- ##
 
-  -- ## Section Three
-  -- "M-t" desc t
-  -- ##
+        -- a comment
+        some code
 
-  -- #"#
+        -- ## Section Three
+        -- "M-t" desc t
+        some code
+        some code
+        some code
+        -- ##
+
+        -- #
+        "#
             ),
             Ok((
                 "",
@@ -739,34 +703,3 @@ mod tests {
         );
     }
 }
-
-
-  //               r#"
-  // -- # Xmonad keymap
-
-  // -- ## Section One
-  // -- "M-1" desc 1
-  // -- desc a
-  // , ("M-a",     spawn "lock.sh")
-  // -- "M-2" desc 2
-  // -- desc b
-  // , ("M-b",     sendMessage (IncMasterN 1))
-  // -- ##
-
-  // -- ## Section Two
-  // -- "M-1" desc 1
-  // -- "M-2" desc 2
-  // --! Nope
-  // -- desc b
-  // , ("M-b",     sendMessage (IncMasterN 1))
-  // -- A simple comment
-  // -- ##
-
-  // -- a comment
-  // some code
-
-  // -- ## Section Three
-  // -- "M-t" desc t
-  // -- ##
-
-  // -- #"#

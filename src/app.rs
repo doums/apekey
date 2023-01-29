@@ -2,11 +2,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use crate::error::Error;
 use crate::parser::{self, Token};
 use crate::user_config::{self, UserConfig, FONT_SIZE, TITLE_FONT_SIZE};
 
 use fuzzy_matcher::skim::SkimMatcherV2;
 use iced::alignment::Horizontal;
+use iced::futures::TryFutureExt;
 use iced::widget::{
     self, column, container, horizontal_rule, scrollable, text, text_input, vertical_space, Column,
     Row, Text,
@@ -17,6 +19,7 @@ use iced::{
 use iced::{event, keyboard, subscription, Event, Font, Subscription, Theme};
 use once_cell::sync::Lazy;
 use std::fmt;
+use tokio::fs;
 use tracing::{debug, error, info, instrument, trace};
 
 static INPUT_ID: Lazy<text_input::Id> = Lazy::new(text_input::Id::unique);
@@ -382,4 +385,16 @@ enum State {
     ParsingConfig,
     RenderKeybinds,
     Error(String),
+}
+
+#[instrument]
+pub async fn read_config(config_path: String) -> Result<Vec<u8>, Error> {
+    fs::read(&config_path)
+        .map_err(|e| {
+            Error::new(format!(
+                "An error occurred while trying to read the config file {}: {}",
+                &config_path, e
+            ))
+        })
+        .await
 }
