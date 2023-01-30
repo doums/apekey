@@ -20,7 +20,7 @@ _emacs-style_ format
 
 Apekey reads your `xmonad.hs` config and looks for comments with
 special formats. Based on these comments, apekey will parse and
-generate the keymap, to display it in a dedicated window.
+generate the keymap, and will render it in a dedicated window.
 
 ##### `-- # [Title]`
 
@@ -37,21 +37,32 @@ keybindings declaration area.
 -- #
 ```
 
+##### `-- ## Section`
+
+Define a section of keybindings. All subsequent annotated keybinds
+will belong to this section until another section is defined.
+
+```haskell
+-- ## Basics
+-- a keybind declaration
+-- a keybind declaration
+-- a keybind declaration
+
+-- ## Another section
+-- keybindings declarations...
+```
+
 ##### `-- Keybind description`
 
 Adds a description to a keybinding. That is, a regular comment.
 The next line must be the corresponding keybinding declaration.
-apekey will automatically parse and extract the keybinding from
+Apekey will automatically parse and extract the keybinding from
 it.
 
 ```haskell
 -- Kill current window
 , ("M-x",         kill)
 ```
-
-Note: If the next line after a comment does not include a keybind
-declaration, the comment will be considered as a simple text
-comment.
 
 ##### `-- "<keys>" Description`
 
@@ -68,22 +79,13 @@ keybindings.
 -- "M-S-<Topic key>" Move current window to topic x
 ```
 
-##### `-- ## Section`
+##### `-- ! Keybind ignored`
 
-Adds a section.
-
-```haskell
--- ## Basics
-```
-
-##### `-- ! Comment ignored`
-
-A simple text comment, ignored. If in the next line a keybind is
-defined, it is also ignored.
+Annotate a keybind but do not render it.
 
 ```haskell
-  -- ! Light up
-  , ("<XF86MonBrightnessUp>",   spawn "pral.sh light_up")
+  -- ! Description
+  , ("<M-u>",   spawn "script.sh")
 ```
 
 #### Illustrative example
@@ -115,6 +117,7 @@ keybinds = ([
   -- Focus next window down
   , ("M-j",         windows W.focusDown)
 
+  -- ...
 
 -- #
 ```
@@ -124,10 +127,11 @@ Once you have added your descriptions simply launch apekey. Press
 
 ### Configuration
 
-apekey will look for a config file at `$XDG_CONFIG_HOME/apekey/apekey.toml`.
+Apekey will look for a config file at
+`$XDG_CONFIG_HOME/apekey/apekey.toml`.
 
-The most important option is `xmonad_config`, set it to the path
-to your `xmonad.hs` configuration file.
+The most important option is `xmonad_config`, it must be set to
+the path pointing to your `xmonad.hs` configuration file.
 
 ```toml
 xmonad_config = "~/.config/xmonad/xmonad.hs"

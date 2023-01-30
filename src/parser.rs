@@ -13,17 +13,9 @@ use nom::{
     sequence::{delimited, preceded, terminated, tuple},
     Finish, IResult,
 };
-use tracing::{debug, event, info, instrument, trace, warn};
+use tracing::{info, instrument, trace};
 
 use crate::token::Tokens;
-
-#[derive(Debug, Clone)]
-pub enum Token {
-    Title(String),
-    Section(String),
-    Keybind { description: String, keys: String },
-    Text(String),
-}
 
 const BOUNDARY_TOKEN: &str = "#";
 const SECTION_TOKEN: &str = "##";
@@ -39,19 +31,18 @@ pub struct Section<'input> {
     pub keybinds: Vec<KeybindToken<'input>>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct Parser<'input> {
-    pub title: Option<&'input str>,
-    pub sections: Vec<Section<'input>>,
-}
+#[derive(Debug, Default)]
+pub struct Parser(pub String);
 
-#[instrument(skip_all)]
-pub async fn parse(input: &str) -> Result<Tokens> {
-    info!("start parsing xmonad configuration");
-    parse_entry(input)
-        .finish()
-        .map(|(_, (title, sections))| Tokens::from((title, sections)))
-        .map_err(|e| eyre!("fail to parse xmonad config: {e}"))
+impl Parser {
+    #[instrument(skip_all)]
+    pub async fn parse(&self) -> Result<Tokens> {
+        info!("start parsing xmonad configuration");
+        parse_entry(&self.0)
+            .finish()
+            .map(|(_, (title, sections))| Tokens::from((title, sections)))
+            .map_err(|e| eyre!("fail to parse xmonad config: {e}"))
+    }
 }
 
 /// A combinator that takes a parser `inner` and produces a parser that also consumes both leading and
@@ -63,7 +54,9 @@ where
     delimited(multispace0, inner, multispace0)
 }
 
+#[instrument(skip_all)]
 fn parse_inner(input: &str) -> IResult<&str, Option<Section>> {
+    trace!("parsing");
     ws(alt((
         map(parse_section, Some),
         map(terminated(not_line_ending, newline), |_| None),
@@ -72,6 +65,7 @@ fn parse_inner(input: &str) -> IResult<&str, Option<Section>> {
 
 #[instrument(skip_all)]
 pub fn parse_entry(input: &str) -> IResult<&str, (Option<&str>, Vec<Section>)> {
+    trace!("parse entry point");
     map(
         ws(tuple((
             many_till(terminated(not_line_ending, newline), parse_boundary),
@@ -81,7 +75,9 @@ pub fn parse_entry(input: &str) -> IResult<&str, (Option<&str>, Vec<Section>)> {
     )(input)
 }
 
+#[instrument(skip_all)]
 fn parse_hs_comment_seq(input: &str) -> IResult<&str, ()> {
+    trace!("parsing");
     map(
         tuple((
             multispace0,
@@ -94,7 +90,9 @@ fn parse_hs_comment_seq(input: &str) -> IResult<&str, ()> {
     )(input)
 }
 
+#[instrument(skip_all)]
 fn parse_boundary(input: &str) -> IResult<&str, Option<&str>> {
+    trace!("parse_boundary");
     map(
         ws(tuple((
             parse_hs_comment_seq,
@@ -107,7 +105,9 @@ fn parse_boundary(input: &str) -> IResult<&str, Option<&str>> {
     )(input)
 }
 
+#[instrument(skip_all)]
 fn parse_section_tag(input: &str) -> IResult<&str, Option<&str>> {
+    trace!("parse section tag");
     map(
         ws(tuple((
             parse_hs_comment_seq,
@@ -119,7 +119,9 @@ fn parse_section_tag(input: &str) -> IResult<&str, Option<&str>> {
     )(input)
 }
 
+#[instrument(skip_all)]
 fn parse_section_inner(input: &str) -> IResult<&str, Option<KeybindToken>> {
+    trace!("parsing section inner");
     ws(alt((
         map(parse_keybind_declaration, Some),
         map(parse_keybind_comment, Some),
@@ -127,7 +129,9 @@ fn parse_section_inner(input: &str) -> IResult<&str, Option<KeybindToken>> {
     )))(input)
 }
 
+#[instrument(skip_all)]
 fn parse_section(input: &str) -> IResult<&str, Section> {
+    trace!("parsing section");
     map(
         ws(tuple((
             parse_section_tag,
@@ -147,7 +151,9 @@ fn parse_section(input: &str) -> IResult<&str, Section> {
     )(input)
 }
 
+#[instrument(skip_all)]
 fn parse_keybind_definition(input: &str) -> IResult<&str, &str> {
+    trace!("parsing");
     map(
         tuple((
             take_until("("),
@@ -165,7 +171,9 @@ fn parse_keybind_definition(input: &str) -> IResult<&str, &str> {
     )(input)
 }
 
+#[instrument(skip_all)]
 fn parse_keybind_description(input: &str) -> IResult<&str, &str> {
+    trace!("parsing");
     map(
         tuple((
             parse_hs_comment_seq,
@@ -178,14 +186,18 @@ fn parse_keybind_description(input: &str) -> IResult<&str, &str> {
     )(input)
 }
 
+#[instrument(skip_all)]
 fn parse_keybind_declaration(input: &str) -> IResult<&str, KeybindToken> {
+    trace!("parsing");
     map(
         tuple((parse_keybind_description, parse_keybind_definition)),
         |(d, k)| KeybindToken(k, d),
     )(input)
 }
 
+#[instrument(skip_all)]
 fn parse_keybind_comment(input: &str) -> IResult<&str, KeybindToken> {
+    trace!("parsing");
     map(
         tuple((
             parse_hs_comment_seq,

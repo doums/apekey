@@ -2,33 +2,28 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::error::Error;
-use crate::parser::{self, parse, Parser, Token};
-use crate::token::Tokens;
-// use crate::token::Tokens;
+use crate::parser::Parser;
+use crate::token::{ScoredKeybind, Tokens};
 use crate::user_config::{self, UserConfig, FONT_SIZE, TITLE_FONT_SIZE};
 
-use eyre::{eyre, Result, WrapErr};
+use eyre::{eyre, Result};
 use fuzzy_matcher::skim::SkimMatcherV2;
 use iced::alignment::Horizontal;
 use iced::futures::TryFutureExt;
-use iced::widget::{
-    self, column, container, horizontal_rule, scrollable, text, text_input, vertical_space, Column,
-    Row, Text,
-};
-use iced::{
-    alignment::Vertical, executor, Alignment, Application, Command, Element, Length, Padding,
-};
+use iced::widget::{self, column, container, horizontal_rule, scrollable, text, text_input, Text};
 use iced::{event, keyboard, subscription, Event, Font, Subscription, Theme};
+use iced::{executor, Application, Command, Element, Length, Padding};
 use once_cell::sync::{Lazy, OnceCell};
 use std::fmt;
 use tokio::fs;
 use tracing::{debug, error, info, instrument, trace};
 
-static XM_CONFIG: OnceCell<String> = OnceCell::new();
+// tokens parsed from xmonad config declared as static as it will
+// not change during the whole app lifetime
+static TOKENS: OnceCell<Tokens> = OnceCell::new();
+
 static INPUT_ID: Lazy<text_input::Id> = Lazy::new(text_input::Id::unique);
 const DEFAULT_TITLE: &str = "Key bindings";
-const SHOW_REGULAR_COMMENT: bool = false;
 // Monospace font
 pub const FONT_MONO: Font = Font::External {
     name: "JetbrainsMono",
@@ -45,7 +40,6 @@ pub struct AppConfig {
     pub config_path: String,
     pub ui: Ui,
     pub theme: Theme,
-    pub regular_comment: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -69,58 +63,35 @@ impl Default for Ui {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct TokenItem {
-    token: Token,
-    score: Option<(i64, Vec<usize>)>,
-}
-
-impl fmt::Display for TokenItem {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.token {
-            Token::Title(s) | Token::Section(s) | Token::Text(s) => write!(f, "{s}"),
-            Token::Keybind { description, keys } => write!(f, "{keys} {description}"),
-        }
-    }
-}
-
-impl From<&Token> for TokenItem {
-    fn from(token: &Token) -> Self {
-        TokenItem {
-            token: token.clone(),
-            score: None,
-        }
-    }
-}
-
 pub struct Apekey {
     state: State,
     input_value: String,
-    tokens: Tokens,
-    filtered_tokens: Vec<TokenItem>,
+    // this field is used to store the matching keybinds when fuzzy
+    // searching
+    tokens: Vec<ScoredKeybind>,
     config: AppConfig,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    ConfigRead(),
+    ConfigRead(String),
     ConfigError(String),
     ParsingDone(Tokens),
     ParsingError(String),
     InputChanged(String),
-    TokensFiltered(Vec<TokenItem>),
+    TokensFiltered(Vec<ScoredKeybind>),
     TabPressed { shift: bool },
 }
 
 impl fmt::Display for Message {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let message = match self {
-            Message::ConfigRead() => "ConfigRead".into(),
+            Message::ConfigRead(_) => "ConfigRead".into(),
             Message::ConfigError(_) => "ConfigError".into(),
             Message::ParsingDone(_) => "ParsingDone".into(),
             Message::ParsingError(_) => "ParsingError".into(),
             Message::InputChanged(input) => format!("InputChanged: {input}"),
-            Message::TokensFiltered(tokens) => format!("TokensFiltered: {}", tokens.len()),
+            Message::TokensFiltered(_) => "TokensFiltered".into(),
             Message::TabPressed { shift } => format!("TabPressed, shift {shift}"),
         };
         write!(f, "{message}")
@@ -137,17 +108,13 @@ impl Application for Apekey {
         let path = flags.config_path.clone();
         (
             Apekey {
-                tokens: Tokens::default(),
-                filtered_tokens: vec![],
+                tokens: vec![],
                 input_value: "".to_owned(),
                 state: State::ReadingConfig,
                 config: flags,
             },
             Command::perform(read_config(path), |result| match result {
-                Ok(content) => {
-                    XM_CONFIG.set(content).unwrap();
-                    Message::ConfigRead()
-                }
+                Ok(content) => Message::ConfigRead(content),
                 Err(e) => Message::ConfigError(e.to_string()),
             }),
         )
@@ -177,26 +144,23 @@ impl Application for Apekey {
     fn update(&mut self, message: Self::Message) -> Command<Message> {
         trace!("{}", message);
         match message {
-            Message::ConfigRead() => {
+            Message::ConfigRead(config) => {
                 info!("xmonad configuration file was read successfully.");
                 self.state = State::ParsingConfig;
-                Command::perform(
-                    parse(XM_CONFIG.get().expect("xmonad config is not initialized")),
-                    |result| match result {
-                        Ok(tokens) => Message::ParsingDone(tokens),
-                        Err(e) => Message::ParsingError(e.to_string()),
-                    },
-                )
+                Command::perform(parse(config), |result| match result {
+                    Ok(tokens) => Message::ParsingDone(tokens),
+                    Err(e) => Message::ParsingError(e.to_string()),
+                })
             }
             Message::ParsingDone(tokens) => {
-                dbg!(&tokens);
+                TOKENS.set(tokens).unwrap();
+                let tokens = TOKENS.get().unwrap();
                 info!(
                     "parsing done, sections {}, keybinds {}",
                     tokens.section_count(),
                     tokens.keybind_count()
                 );
-                // self.filtered_tokens = self.tokens.iter().map(TokenItem::from).collect();
-                // self.state = State::RenderKeybinds;
+                self.state = State::RenderKeybinds;
                 Command::none()
             }
             Message::ConfigError(err) => {
@@ -211,14 +175,21 @@ impl Application for Apekey {
             }
             Message::InputChanged(value) => {
                 self.input_value = value.clone();
-                // Command::perform(filter_tokens(self.tokens.clone(), value), |result| {
-                //     Message::TokensFiltered(result)
-                // })
-                Command::none()
+                if value.is_empty() {
+                    Command::none()
+                } else {
+                    Command::perform(
+                        filter_tokens(
+                            TOKENS.get().expect("TOKENS not initialized!").keybinds(),
+                            value,
+                        ),
+                        |tokens| -> Message { Message::TokensFiltered(tokens) },
+                    )
+                }
             }
             Message::TokensFiltered(tokens) => {
-                info!("fuzzy sorting done, matching tokens {}", tokens.len());
-                self.filtered_tokens = tokens;
+                self.tokens = tokens;
+                info!("fuzzy sorting done, matching tokens {}", self.tokens.len());
                 Command::none()
             }
             Message::TabPressed { shift } => {
@@ -250,13 +221,49 @@ impl Application for Apekey {
                 .center_x()
                 .center_y()
                 .into(),
-            State::RenderKeybinds => container(Text::new("▪▪▪ wip   ").font(FONT_MONO))
+            State::RenderKeybinds => {
+                debug!("rendering keybinds");
+                let tokens = TOKENS.get().unwrap();
+                let text_input = container(
+                    text_input("Search", &self.input_value, Message::InputChanged)
+                        .id(INPUT_ID.clone())
+                        .padding(10)
+                        .width(Length::Units(180))
+                        .size(20),
+                )
+                .width(Length::Fill)
+                .align_x(Horizontal::Right);
+
+                let default_title = DEFAULT_TITLE.to_string();
+                let title = text(tokens.title.as_ref().unwrap_or(&default_title))
+                    .size(self.config.ui.title_size)
+                    .font(FONT_SS);
+
+                let keybinds = if self.input_value.is_empty() {
+                    scrollable(tokens.view(&self.config))
+                } else {
+                    scrollable(self.tokens.iter().fold(column![], |column, keybind| {
+                        column
+                            .push(keybind.view(&self.config))
+                            .width(Length::Fill)
+                            .spacing(8)
+                            .padding(Padding::from([35, 30, 30, 30])) // top, right, bottom, left
+                    }))
+                };
+
+                container(column![
+                    container(column![title, text_input].spacing(14))
+                        .padding(20)
+                        .width(Length::Fill),
+                    horizontal_rule(1),
+                    keybinds.height(Length::Fill)
+                ])
                 .width(Length::Fill)
                 .height(Length::Fill)
-                .padding(20)
                 .center_x()
                 .center_y()
-                .into(),
+                .into()
+            }
             State::Error(err) => container(
                 Text::new(err)
                     .size(self.config.ui.error_size)
@@ -277,21 +284,17 @@ impl Application for Apekey {
 }
 
 #[instrument(skip_all)]
-async fn filter_tokens(tokens: Vec<Token>, pattern: String) -> Vec<TokenItem> {
+async fn filter_tokens(mut tokens: Vec<ScoredKeybind>, pattern: String) -> Vec<ScoredKeybind> {
     let matcher = SkimMatcherV2::default();
-    let mut filtered = tokens.iter().map(TokenItem::from).collect();
-    if pattern.is_empty() {
-        return filtered;
+
+    for token in &mut tokens {
+        token.score = matcher.fuzzy(&token.to_string(), &pattern, true);
     }
 
-    filtered = filtered
+    let mut filtered: Vec<ScoredKeybind> = tokens
         .into_iter()
-        .map(|mut token| {
-            token.score = matcher.fuzzy(&token.to_string(), &pattern, true);
-            token
-        })
         // only retains keybind tokens with a matching score
-        .filter(|token| token.score.is_some() && matches!(&token.token, Token::Keybind { .. }))
+        .filter(|token| token.score.is_some())
         .collect();
 
     // sort by fuzzy score
@@ -303,6 +306,11 @@ async fn filter_tokens(tokens: Vec<Token>, pattern: String) -> Vec<TokenItem> {
             .cmp(&a.score.as_ref().unwrap().0)
     });
     filtered
+}
+
+async fn parse(config: String) -> Result<Tokens> {
+    let parser = Parser(config);
+    parser.parse().await
 }
 
 impl From<UserConfig> for AppConfig {
@@ -317,7 +325,6 @@ impl From<UserConfig> for AppConfig {
                     user_config::Theme::Light => Theme::Light,
                 })
                 .unwrap_or_else(|| Theme::Dark),
-            regular_comment: config.regular_comment.unwrap_or(SHOW_REGULAR_COMMENT),
             ui: Ui {
                 title_size: font_config.title_size.unwrap_or_default(),
                 section_size: font_config.section_size.unwrap_or_default(),
