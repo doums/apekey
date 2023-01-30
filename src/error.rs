@@ -35,8 +35,3 @@ impl From<IoError> for Error {
     }
 }
 
-impl From<nom::error::Error<&str>> for Error {
-    fn from(error: nom::error::Error<&str>) -> Self {
-        Error(error.to_string())
-    }
-}

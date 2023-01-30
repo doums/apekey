@@ -25,7 +25,6 @@ impl Tokens {
             .iter()
             .fold(0, |acc, s| acc + s.keybinds.len())
     }
-
 }
 
 impl<'input> From<Parsed<'input>> for Tokens {

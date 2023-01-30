@@ -7,6 +7,7 @@ use crate::parser::{self, Parser, Token};
 use crate::token::Tokens;
 use crate::user_config::{self, UserConfig, FONT_SIZE, TITLE_FONT_SIZE};
 
+use eyre::{eyre, Result, WrapErr};
 use fuzzy_matcher::skim::SkimMatcherV2;
 use iced::alignment::Horizontal;
 use iced::futures::TryFutureExt;
@@ -333,13 +334,8 @@ enum State {
 }
 
 #[instrument]
-pub async fn read_config(config_path: String) -> Result<String, Error> {
+pub async fn read_config(config_path: String) -> Result<String> {
     fs::read_to_string(&config_path)
-        .map_err(|e| {
-            Error::new(format!(
-                "An error occurred while trying to read the config file {}: {}",
-                &config_path, e
-            ))
-        })
         .await
+        .wrap_err_with(|| format!("Failed to read the config file {config_path}"))
 }

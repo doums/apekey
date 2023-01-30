@@ -2,11 +2,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use eyre::{eyre, Result};
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_until},
     character::complete::{multispace0, newline, not_line_ending, space0},
-    combinator::{eof, map, not, opt, peek, rest},
+    combinator::{eof, map, not, opt, peek},
     error::ParseError,
     multi::many_till,
     sequence::{delimited, preceded, terminated, tuple},
@@ -55,12 +56,12 @@ impl Parser {
     }
 
     #[instrument(skip_all)]
-    pub async fn parse(self) -> Result<Tokens, Error> {
+    pub async fn parse(self) -> Result<Tokens> {
         info!("start parsing xmonad configuration");
         parse_entry(&self.input)
             .finish()
             .map(|r| Tokens::from(r.1))
-            .map_err(Error::from)
+            .map_err(|e| eyre!("fail to parse xmonad config: {e}"))
     }
 }
 
