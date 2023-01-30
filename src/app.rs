@@ -3,8 +3,9 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use crate::error::Error;
-use crate::parser::{self, Parser, Token};
+use crate::parser::{self, parse, Parser, Token};
 use crate::token::Tokens;
+// use crate::token::Tokens;
 use crate::user_config::{self, UserConfig, FONT_SIZE, TITLE_FONT_SIZE};
 
 use eyre::{eyre, Result, WrapErr};
@@ -19,11 +20,12 @@ use iced::{
     alignment::Vertical, executor, Alignment, Application, Command, Element, Length, Padding,
 };
 use iced::{event, keyboard, subscription, Event, Font, Subscription, Theme};
-use once_cell::sync::Lazy;
+use once_cell::sync::{Lazy, OnceCell};
 use std::fmt;
 use tokio::fs;
 use tracing::{debug, error, info, instrument, trace};
 
+static XM_CONFIG: OnceCell<String> = OnceCell::new();
 static INPUT_ID: Lazy<text_input::Id> = Lazy::new(text_input::Id::unique);
 const DEFAULT_TITLE: &str = "Key bindings";
 const SHOW_REGULAR_COMMENT: bool = false;
@@ -97,12 +99,11 @@ pub struct Apekey {
     tokens: Tokens,
     filtered_tokens: Vec<TokenItem>,
     config: AppConfig,
-    xmonad_config: &'static str,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    ConfigRead(String),
+    ConfigRead(),
     ConfigError(String),
     ParsingDone(Tokens),
     ParsingError(String),
@@ -114,7 +115,7 @@ pub enum Message {
 impl fmt::Display for Message {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let message = match self {
-            Message::ConfigRead(_) => "ConfigRead".into(),
+            Message::ConfigRead() => "ConfigRead".into(),
             Message::ConfigError(_) => "ConfigError".into(),
             Message::ParsingDone(_) => "ParsingDone".into(),
             Message::ParsingError(_) => "ParsingError".into(),
@@ -141,10 +142,12 @@ impl Application for Apekey {
                 input_value: "".to_owned(),
                 state: State::ReadingConfig,
                 config: flags,
-                xmonad_config: "sfds",
             },
             Command::perform(read_config(path), |result| match result {
-                Ok(content) => Message::ConfigRead(content),
+                Ok(content) => {
+                    XM_CONFIG.set(content).unwrap();
+                    Message::ConfigRead()
+                }
                 Err(e) => Message::ConfigError(e.to_string()),
             }),
         )
@@ -171,17 +174,19 @@ impl Application for Apekey {
         })
     }
 
-    #[instrument(skip_all)]
     fn update(&mut self, message: Self::Message) -> Command<Message> {
         trace!("{}", message);
         match message {
-            Message::ConfigRead(content) => {
+            Message::ConfigRead() => {
                 info!("xmonad configuration file was read successfully.");
                 self.state = State::ParsingConfig;
-                Command::perform(Parser::new(content).parse(), |result| match result {
-                    Ok(tokens) => Message::ParsingDone(tokens),
-                    Err(e) => Message::ParsingError(e.to_string()),
-                })
+                Command::perform(
+                    parse(XM_CONFIG.get().expect("xmonad config is not initialized")),
+                    |result| match result {
+                        Ok(tokens) => Message::ParsingDone(tokens),
+                        Err(e) => Message::ParsingError(e.to_string()),
+                    },
+                )
             }
             Message::ParsingDone(tokens) => {
                 dbg!(&tokens);
@@ -190,7 +195,6 @@ impl Application for Apekey {
                     tokens.section_count(),
                     tokens.keybind_count()
                 );
-                self.tokens = tokens;
                 // self.filtered_tokens = self.tokens.iter().map(TokenItem::from).collect();
                 // self.state = State::RenderKeybinds;
                 Command::none()
@@ -336,6 +340,6 @@ enum State {
 #[instrument]
 pub async fn read_config(config_path: String) -> Result<String> {
     fs::read_to_string(&config_path)
+        .map_err(|e| eyre!("Failed to read the config file {config_path}\n{e}"))
         .await
-        .wrap_err_with(|| format!("Failed to read the config file {config_path}"))
 }

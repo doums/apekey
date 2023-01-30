@@ -15,7 +15,7 @@ use nom::{
 };
 use tracing::{debug, event, info, instrument, trace, warn};
 
-use crate::{error::Error, token::Tokens};
+use crate::token::Tokens;
 
 #[derive(Debug, Clone)]
 pub enum Token {
@@ -40,29 +40,18 @@ pub struct Section<'input> {
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
-pub struct Parsed<'input> {
+pub struct Parser<'input> {
     pub title: Option<&'input str>,
     pub sections: Vec<Section<'input>>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct Parser {
-    input: String,
-}
-
-impl Parser {
-    pub fn new(input: String) -> Self {
-        Parser { input }
-    }
-
-    #[instrument(skip_all)]
-    pub async fn parse(self) -> Result<Tokens> {
-        info!("start parsing xmonad configuration");
-        parse_entry(&self.input)
-            .finish()
-            .map(|r| Tokens::from(r.1))
-            .map_err(|e| eyre!("fail to parse xmonad config: {e}"))
-    }
+#[instrument(skip_all)]
+pub async fn parse(input: &str) -> Result<Tokens> {
+    info!("start parsing xmonad configuration");
+    parse_entry(input)
+        .finish()
+        .map(|(_, (title, sections))| Tokens::from((title, sections)))
+        .map_err(|e| eyre!("fail to parse xmonad config: {e}"))
 }
 
 /// A combinator that takes a parser `inner` and produces a parser that also consumes both leading and
@@ -82,16 +71,13 @@ fn parse_inner(input: &str) -> IResult<&str, Option<Section>> {
 }
 
 #[instrument(skip_all)]
-pub fn parse_entry(input: &str) -> IResult<&str, Parsed> {
+pub fn parse_entry(input: &str) -> IResult<&str, (Option<&str>, Vec<Section>)> {
     map(
         ws(tuple((
             many_till(terminated(not_line_ending, newline), parse_boundary),
             many_till(parse_inner, parse_boundary),
         ))),
-        |((_, title), (s, _))| Parsed {
-            title,
-            sections: s.into_iter().flatten().collect(),
-        },
+        |((_, title), (s, _))| (title, s.into_iter().flatten().collect()),
     )(input)
 }
 
@@ -663,13 +649,7 @@ mod tests {
         -- #
         some code"#
             ),
-            Ok((
-                "some code",
-                Parsed {
-                    title: Some("Xmonad keymap"),
-                    sections: vec![]
-                }
-            ))
+            Ok(("some code", (Some("Xmonad keymap"), vec![])))
         );
     }
 
@@ -717,9 +697,9 @@ mod tests {
             ),
             Ok((
                 "some code...\n        ",
-                Parsed {
-                    title: Some("Xmonad keymap"),
-                    sections: vec![
+                (
+                    Some("Xmonad keymap"),
+                    vec![
                         Section {
                             title: Some("Section One"),
                             keybinds: vec![
@@ -742,7 +722,7 @@ mod tests {
                             keybinds: vec![KeybindToken("M-t", "desc t"),]
                         }
                     ]
-                }
+                )
             ))
         );
     }

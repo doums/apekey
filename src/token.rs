@@ -1,4 +1,4 @@
-use crate::parser::Parsed;
+use crate::parser::Section as ParsedSection;
 
 #[derive(Debug, Clone, Default)]
 pub struct KeybindToken(String, String);
@@ -27,10 +27,10 @@ impl Tokens {
     }
 }
 
-impl<'input> From<Parsed<'input>> for Tokens {
-    fn from(parsed: Parsed<'input>) -> Self {
+impl<'input> From<(Option<&str>, Vec<ParsedSection<'input>>)> for Tokens {
+    fn from(parsed: (Option<&str>, Vec<ParsedSection<'input>>)) -> Self {
         let sections = parsed
-            .sections
+            .1
             .iter()
             .map(|s| Section {
                 title: s.title.map(|t| t.to_owned()),
@@ -42,7 +42,7 @@ impl<'input> From<Parsed<'input>> for Tokens {
             })
             .collect();
         Tokens {
-            title: parsed.title.map(|t| t.to_owned()),
+            title: parsed.0.map(|t| t.to_owned()),
             sections,
         }
     }
