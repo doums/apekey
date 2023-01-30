@@ -6,13 +6,15 @@ use nom::{
     branch::alt,
     bytes::complete::{tag, take_until},
     character::complete::{multispace0, newline, not_line_ending, space0},
-    combinator::{map, not, opt},
+    combinator::{eof, map, not, opt, peek, rest},
     error::ParseError,
     multi::many_till,
     sequence::{delimited, preceded, terminated, tuple},
-    IResult,
+    Finish, IResult,
 };
-use tracing::{debug, instrument, trace, warn};
+use tracing::{debug, event, info, instrument, trace, warn};
+
+use crate::{error::Error, token::Tokens};
 
 #[derive(Debug, Clone)]
 pub enum Token {
@@ -28,18 +30,38 @@ const HS_COMMENT_SEQ: &str = "--";
 const IGNORE_TOKEN: &str = "!";
 
 #[derive(Debug, Clone, Default, PartialEq)]
-pub struct KeybindToken<'input>(&'input str, &'input str);
+pub struct KeybindToken<'input>(pub &'input str, pub &'input str);
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Section<'input> {
-    title: Option<&'input str>,
-    keybinds: Vec<KeybindToken<'input>>,
+    pub title: Option<&'input str>,
+    pub keybinds: Vec<KeybindToken<'input>>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
-pub struct Parser<'input> {
-    title: Option<&'input str>,
-    sections: Vec<Section<'input>>,
+pub struct Parsed<'input> {
+    pub title: Option<&'input str>,
+    pub sections: Vec<Section<'input>>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Parser {
+    input: String,
+}
+
+impl Parser {
+    pub fn new(input: String) -> Self {
+        Parser { input }
+    }
+
+    #[instrument(skip_all)]
+    pub async fn parse(self) -> Result<Tokens, Error> {
+        info!("start parsing xmonad configuration");
+        parse_entry(&self.input)
+            .finish()
+            .map(|r| Tokens::from(r.1))
+            .map_err(Error::from)
+    }
 }
 
 /// A combinator that takes a parser `inner` and produces a parser that also consumes both leading and
@@ -59,13 +81,13 @@ fn parse_inner(input: &str) -> IResult<&str, Option<Section>> {
 }
 
 #[instrument(skip_all)]
-pub fn parse(input: &str) -> IResult<&str, Parser> {
+pub fn parse_entry(input: &str) -> IResult<&str, Parsed> {
     map(
         ws(tuple((
             many_till(terminated(not_line_ending, newline), parse_boundary),
             many_till(parse_inner, parse_boundary),
         ))),
-        |((_, title), (s, _))| Parser {
+        |((_, title), (s, _))| Parsed {
             title,
             sections: s.into_iter().flatten().collect(),
         },
@@ -122,7 +144,14 @@ fn parse_section(input: &str) -> IResult<&str, Section> {
     map(
         ws(tuple((
             parse_section_tag,
-            many_till(parse_section_inner, parse_section_tag),
+            many_till(
+                parse_section_inner,
+                alt((
+                    map(peek(parse_boundary), |_| ()),
+                    map(peek(parse_section_tag), |_| ()),
+                    map(eof, |_| ()),
+                )),
+            ),
         ))),
         |(title, (k, _))| Section {
             title,
@@ -377,23 +406,49 @@ mod tests {
 
     #[test]
     fn parse_empty_section1() {
-        assert!(parse_section(r#" -- ##"#).is_err());
+        assert_eq!(
+            parse_section(r#" -- ##"#),
+            Ok((
+                "",
+                Section {
+                    ..Default::default()
+                }
+            ))
+        );
     }
 
     #[test]
     fn parse_empty_section2() {
-        assert!(parse_section(
-            r#" -- ##
+        assert_eq!(
+            parse_section(
+                r#" -- ##
 
-              "#
-        )
-        .is_err());
-        // assert!(parse_section(r#" -- ## -- ##"#).is_err());
+                "#
+            ),
+            Ok((
+                "",
+                Section {
+                    ..Default::default()
+                }
+            ))
+        );
     }
 
     #[test]
     fn parse_empty_section3() {
-        assert!(parse_section(r#" -- ## Section -- ##"#).is_err());
+        assert_eq!(
+            parse_section(
+                r#" -- ## -- ##
+                "#
+            ),
+            Ok((
+                "",
+                Section {
+                    title: Some("-- ##"),
+                    ..Default::default()
+                }
+            ))
+        );
     }
 
     #[test]
@@ -402,11 +457,10 @@ mod tests {
             parse_section(
                 r#" 
                 -- ## Section
-                -- ##
-                "#
+                -- ## Another Section"#
             ),
             Ok((
-                "",
+                "-- ## Another Section",
                 Section {
                     title: Some("Section"),
                     keybinds: vec![]
@@ -420,7 +474,7 @@ mod tests {
         assert_eq!(
             parse_section(
                 r#" -- ## Section
-                    -- ## "#
+                "#
             ),
             Ok((
                 "",
@@ -436,43 +490,8 @@ mod tests {
     fn parse_empty_section6() {
         assert_eq!(
             parse_section(
-                r#" -- ## Section
-                    -- ##"#
-            ),
-            Ok((
-                "",
-                Section {
-                    title: Some("Section"),
-                    keybinds: vec![]
-                }
-            ))
-        );
-    }
-
-    #[test]
-    fn parse_empty_section7() {
-        assert_eq!(
-            parse_section(
-                r#" -- ## Section
-
-                    -- ##"#
-            ),
-            Ok((
-                "",
-                Section {
-                    title: Some("Section"),
-                    keybinds: vec![]
-                }
-            ))
-        );
-    }
-
-    #[test]
-    fn parse_empty_section8() {
-        assert_eq!(
-            parse_section(
                 r#" -- ## -- ##
-                    -- ##"#
+                  "#
             ),
             Ok((
                 "",
@@ -485,13 +504,33 @@ mod tests {
     }
 
     #[test]
+    fn parse_section_stop_on_end_tag() {
+        assert_eq!(
+            parse_section(
+                r#" -- ## Section
+                    -- "M-a" desc for A
+                    -- #
+                    -- "M-b" desc for B
+                  "#
+            ),
+            Ok((
+                "-- #\n                    -- \"M-b\" desc for B\n                  ",
+                Section {
+                    title: Some("Section"),
+                    keybinds: vec![KeybindToken("M-a", "desc for A")]
+                }
+            ))
+        );
+    }
+
+    #[test]
     fn parse_section_with_garbage1() {
         assert_eq!(
             parse_section(
                 r#"
   -- ## A section
   -- simple comment
-  -- ##"#
+  "#
             ),
             Ok((
                 "",
@@ -510,7 +549,7 @@ mod tests {
                 r#"
   -- ## A section
   some haskell code
-  -- ##"#
+  "#
             ),
             Ok((
                 "",
@@ -529,7 +568,7 @@ mod tests {
                 r#"
   -- ## A section
   -- "M-1" desc 1
-  -- ##
+
   "#
             ),
             Ok((
@@ -550,7 +589,7 @@ mod tests {
   -- ## A section
   -- "M-1" desc 1
   -- "M-2" desc 2
-  -- ##"#
+  "#
             ),
             Ok((
                 "",
@@ -571,7 +610,7 @@ mod tests {
   -- "M-1" desc 1
   -- desc a
   , ("M-a",     spawn "lock.sh")
-  -- ##"#
+  "#
             ),
             Ok((
                 "",
@@ -595,7 +634,7 @@ mod tests {
   -- "M-2" desc 2
   -- desc b
   , ("M-b",     sendMessage (IncMasterN 1))
-  -- ##"#
+  "#
             ),
             Ok((
                 "",
@@ -615,7 +654,7 @@ mod tests {
     #[test]
     fn parse_simple_case() {
         assert_eq!(
-            parse(
+            parse_entry(
                 r#"
         some code
         some code
@@ -625,7 +664,7 @@ mod tests {
             ),
             Ok((
                 "some code",
-                Parser {
+                Parsed {
                     title: Some("Xmonad keymap"),
                     sections: vec![]
                 }
@@ -636,44 +675,48 @@ mod tests {
     #[test]
     fn parse_real_case() {
         assert_eq!(
-            parse(
+            parse_entry(
                 r#"
+        some code...
         -- # Xmonad keymap
 
         -- ## Section One
+
         -- "M-1" desc 1
         -- desc a
         , ("M-a",     spawn "lock.sh")
+
         -- "M-2" desc 2
         -- desc b
         , ("M-b",     sendMessage (IncMasterN 1))
-        -- ##
 
         -- ## Section Two
         -- "M-1" desc 1
         -- "M-2" desc 2
         --! Nope
+        , ("M-p",     hi)
         -- desc b
         , ("M-b",     sendMessage (IncMasterN 1))
         -- A simple comment
-        -- ##
 
         -- a comment
         some code
-
         -- ## Section Three
+        some code
+        some code
         -- "M-t" desc t
         some code
         some code
         some code
-        -- ##
 
         -- #
+
+        some code...
         "#
             ),
             Ok((
-                "",
-                Parser {
+                "some code...\n        ",
+                Parsed {
                     title: Some("Xmonad keymap"),
                     sections: vec![
                         Section {

@@ -6,6 +6,7 @@ mod app;
 mod error;
 mod parser;
 mod user_config;
+mod token;
 
 use crate::{
     app::{Apekey, AppConfig},
