@@ -3,8 +3,8 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 mod app;
-mod error;
 mod parser;
+mod token;
 mod user_config;
 
 use crate::{
@@ -43,7 +43,7 @@ fn main() -> iced::Result {
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(
             env::var("RUST_LOG")
-                .unwrap_or_else(|_| format!("apekey={}", cli.log.unwrap_or(Level::TRACE))),
+                .unwrap_or_else(|_| format!("apekey={}", cli.log.unwrap_or(Level::INFO))),
         ))
         .with(tracing_subscriber::fmt::layer())
         .init();

@@ -20,7 +20,7 @@ _emacs-style_ format
 
 Apekey reads your `xmonad.hs` config and looks for comments with
 special formats. Based on these comments, apekey will parse and
-generate the keymap, to display it in a dedicated window.
+generate the keymap, and will render it in a dedicated window.
 
 ##### `-- # [Title]`
 
@@ -37,21 +37,32 @@ keybindings declaration area.
 -- #
 ```
 
+##### `-- ## Section`
+
+Define a section of keybindings. All subsequent annotated keybinds
+will belong to this section until another section is defined.
+
+```haskell
+-- ## Basics
+-- a keybind declaration
+-- a keybind declaration
+-- a keybind declaration
+
+-- ## Another section
+-- keybindings declarations...
+```
+
 ##### `-- Keybind description`
 
 Adds a description to a keybinding. That is, a regular comment.
 The next line must be the corresponding keybinding declaration.
-apekey will automatically parse and extract the keybinding from
+Apekey will automatically parse and extract the keybinding from
 it.
 
 ```haskell
 -- Kill current window
 , ("M-x",         kill)
 ```
-
-Note: If the next line after a comment does not include a keybind
-declaration, the comment will be considered as a simple text
-comment.
 
 ##### `-- "<keys>" Description`
 
@@ -68,12 +79,13 @@ keybindings.
 -- "M-S-<Topic key>" Move current window to topic x
 ```
 
-##### `-- ## Section`
+##### `-- ! Keybind ignored`
 
-Adds a section.
+Annotate a keybind but do not render it.
 
 ```haskell
--- ## Basics
+  -- ! Description
+  , ("<M-u>",   spawn "script.sh")
 ```
 
 #### Illustrative example
@@ -105,6 +117,7 @@ keybinds = ([
   -- Focus next window down
   , ("M-j",         windows W.focusDown)
 
+  -- ...
 
 -- #
 ```
@@ -114,21 +127,22 @@ Once you have added your descriptions simply launch apekey. Press
 
 ### Configuration
 
-apekey will look for a config file at `$XDG_CONFIG_HOME/apekey/apekey.toml`.
+Apekey will look for a config file at
+`$XDG_CONFIG_HOME/apekey/apekey.toml`.
 
-The most important option is `xmonad_config`, set it to the path
-to your `xmonad.hs` configuration file.
+The most important option is `xmonad_config`, it must be set to
+the path pointing to your `xmonad.hs` configuration file.
 
 ```toml
 xmonad_config = "~/.config/xmonad/xmonad.hs"
 ```
 
-All other options are optional and can be found here
-https://github.com/doums/apekey/blob/67f8be7d855abed5ee34b1504fd033aa2bc11dac/src/user_config.rs#L22
+Other available options are defined in `src/user_config.rs`, check
+for `UserConfig` structure
+https://github.com/doums/apekey/blob/main/src/user_config.rs
 
 ### TODO
 
-- add a config option to set a minimum keybind width
 - highlight fuzzy matches
 
 ### License

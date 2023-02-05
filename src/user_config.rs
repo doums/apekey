@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use anyhow::{Context, Result};
+use eyre::{eyre, Context, Result};
 use serde::Deserialize;
 use std::{env, fs};
 use tracing::{debug, error, instrument};
@@ -23,8 +23,6 @@ pub struct UserConfig {
     pub xmonad_config: String,
     pub font: Option<FontConfig>,
     pub theme: Option<Theme>,
-    pub regular_comment: Option<bool>, // not yet implemented
-    pub keybind_text_min_width: Option<usize>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -41,13 +39,13 @@ impl UserConfig {
     pub fn try_read() -> Result<Self> {
         let home = env::var("HOME").context("Environment variable HOME not set")?;
         let xdg_config_path =
-            env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| format!("{}/.config", home));
-        let config_path = format!("{}/apekey/apekey.toml", xdg_config_path);
+            env::var("XDG_CONFIG_HOME").unwrap_or_else(|_| format!("{home}/.config"));
+        let config_path = format!("{xdg_config_path}/apekey/apekey.toml");
         debug!("user config path {}", config_path);
         let content = fs::read(&config_path).context(config_path)?;
         toml::from_slice::<UserConfig>(&content).map_err(|e| {
             error!("{}", e);
-            anyhow::Error::new(e)
+            eyre!("{e}")
         })
     }
 }
@@ -58,8 +56,6 @@ impl Default for UserConfig {
             xmonad_config: XMONAD_HS_PATH.into(),
             font: Some(FontConfig::default()),
             theme: None,
-            regular_comment: None,
-            keybind_text_min_width: None,
         }
     }
 }
