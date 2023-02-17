@@ -22,6 +22,7 @@ use tracing::{debug, error, info, instrument, trace};
 // not change during the whole app lifetime
 static TOKENS: OnceCell<Tokens> = OnceCell::new();
 
+static FUZZY_MATCHER: Lazy<SkimMatcherV2> = Lazy::new(SkimMatcherV2::default);
 static INPUT_ID: Lazy<text_input::Id> = Lazy::new(text_input::Id::unique);
 const DEFAULT_TITLE: &str = "Key bindings";
 // Monospace font
@@ -285,10 +286,8 @@ impl Application for Apekey {
 
 #[instrument(skip_all)]
 async fn filter_tokens(mut tokens: Vec<ScoredKeybind>, pattern: String) -> Vec<ScoredKeybind> {
-    let matcher = SkimMatcherV2::default();
-
     for token in &mut tokens {
-        token.score = matcher.fuzzy(&token.to_string(), &pattern, true);
+        token.score = FUZZY_MATCHER.fuzzy(&token.to_string(), &pattern, true);
     }
 
     let mut filtered: Vec<ScoredKeybind> = tokens
