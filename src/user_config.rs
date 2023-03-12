@@ -4,7 +4,7 @@
 
 use eyre::{eyre, Context, Result};
 use serde::Deserialize;
-use std::{env, fs};
+use std::{env, fs, str};
 use tracing::{debug, error, instrument};
 
 // default values
@@ -43,7 +43,7 @@ impl UserConfig {
         let config_path = format!("{xdg_config_path}/apekey/apekey.toml");
         debug!("user config path {}", config_path);
         let content = fs::read(&config_path).context(config_path)?;
-        toml::from_slice::<UserConfig>(&content).map_err(|e| {
+        toml::from_str::<UserConfig>(str::from_utf8(&content)?).map_err(|e| {
             error!("{}", e);
             eyre!("{e}")
         })
