@@ -229,7 +229,7 @@ impl Application for Apekey {
                     text_input("Search", &self.input_value, Message::InputChanged)
                         .id(INPUT_ID.clone())
                         .padding(10)
-                        .width(Length::Units(180))
+                        .width(Length::Fixed(180.0))
                         .size(20),
                 )
                 .width(Length::Fill)
@@ -268,7 +268,7 @@ impl Application for Apekey {
             State::Error(err) => container(
                 Text::new(err)
                     .size(self.config.ui.error_size)
-                    .width(Length::Units(400)),
+                    .width(Length::Fixed(400.0)),
             )
             .width(Length::Fill)
             .height(Length::Fill)
