@@ -13,6 +13,8 @@ use iced::futures::TryFutureExt;
 use iced::widget::{self, column, container, horizontal_rule, scrollable, text, text_input, Text};
 use iced::{event, keyboard, subscription, Event, Font, Subscription, Theme};
 use iced::{executor, Application, Command, Element, Length, Padding};
+
+// TODO once stable drop once_cell crate and use `std::sync::{LazyLock, OnceLock}`
 use once_cell::sync::{Lazy, OnceCell};
 use std::fmt;
 use tokio::fs;
@@ -226,11 +228,12 @@ impl Application for Apekey {
                 debug!("rendering keybinds");
                 let tokens = TOKENS.get().unwrap();
                 let text_input = container(
-                    text_input("Search", &self.input_value, Message::InputChanged)
+                    text_input("Search", &self.input_value)
                         .id(INPUT_ID.clone())
                         .padding(10)
                         .width(Length::Fixed(180.0))
-                        .size(20),
+                        .size(20)
+                        .on_input(Message::InputChanged),
                 )
                 .width(Length::Fill)
                 .align_x(Horizontal::Right);
