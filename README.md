@@ -40,7 +40,6 @@ keybinds = ([
 -- Keymap
 , ("M-S-,", namedScratchpadAction scratchpads "keymap")
 
-
 -- ...
 
 scratchpads = [
