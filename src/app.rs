@@ -11,7 +11,7 @@ use fuzzy_matcher::skim::SkimMatcherV2;
 use iced::alignment::Horizontal;
 use iced::futures::TryFutureExt;
 use iced::widget::{self, column, container, horizontal_rule, scrollable, text, text_input, Text};
-use iced::{event, keyboard, subscription, Event, Font, Subscription, Theme};
+use iced::{event, font, keyboard, subscription, theme, Color, Event, Font, Subscription, Theme};
 use iced::{executor, Application, Command, Element, Length, Padding};
 
 // TODO once stable drop once_cell crate and use `std::sync::{LazyLock, OnceLock}`
@@ -26,17 +26,8 @@ static TOKENS: OnceCell<Tokens> = OnceCell::new();
 
 static FUZZY_MATCHER: Lazy<SkimMatcherV2> = Lazy::new(SkimMatcherV2::default);
 static INPUT_ID: Lazy<text_input::Id> = Lazy::new(text_input::Id::unique);
-const DEFAULT_TITLE: &str = "Key bindings";
-// Monospace font
-pub const FONT_MONO: Font = Font::External {
-    name: "JetbrainsMono",
-    bytes: include_bytes!("../assets/fonts/JetBrainsMono-Regular.ttf"),
-};
-// Sans Serif font
-pub const FONT_SS: Font = Font::External {
-    name: "Roboto",
-    bytes: include_bytes!("../assets/fonts/Roboto-Regular.ttf"),
-};
+const DEFAULT_TITLE: &str = "Keymap";
+pub const FONT_MONO: Font = Font::with_name("JetBrains Mono");
 
 #[derive(Debug)]
 pub struct AppConfig {
@@ -84,6 +75,7 @@ pub enum Message {
     InputChanged(String),
     TokensFiltered(Vec<ScoredKeybind>),
     TabPressed { shift: bool },
+    FontLoaded(Result<(), font::Error>),
 }
 
 impl fmt::Display for Message {
@@ -96,6 +88,7 @@ impl fmt::Display for Message {
             Message::InputChanged(input) => format!("InputChanged: {input}"),
             Message::TokensFiltered(_) => "TokensFiltered".into(),
             Message::TabPressed { shift } => format!("TabPressed, shift {shift}"),
+            Message::FontLoaded(_) => "FontLoaded".into(),
         };
         write!(f, "{message}")
     }
@@ -116,10 +109,14 @@ impl Application for Apekey {
                 state: State::ReadingConfig,
                 config: flags,
             },
-            Command::perform(read_config(path), |result| match result {
-                Ok(content) => Message::ConfigRead(content),
-                Err(e) => Message::ConfigError(e.to_string()),
-            }),
+            Command::batch(vec![
+                Command::perform(read_config(path), |result| match result {
+                    Ok(content) => Message::ConfigRead(content),
+                    Err(e) => Message::ConfigError(e.to_string()),
+                }),
+                font::load(include_bytes!("../assets/fonts/JetBrainsMono-Regular.ttf").as_slice())
+                    .map(Message::FontLoaded),
+            ]),
         )
     }
 
@@ -204,11 +201,16 @@ impl Application for Apekey {
                     widget::focus_next()
                 }
             }
+            Message::FontLoaded(_) => {
+                debug!("message: font loaded");
+                Command::none()
+            }
         }
     }
 
     #[instrument(skip_all)]
     fn view(&self) -> Element<Self::Message> {
+        let palette = self.theme().palette();
         match &self.state {
             State::ReadingConfig => container(Text::new("▪▫▫ Reading xmonad.hs").font(FONT_MONO))
                 .width(Length::Fill)
@@ -232,7 +234,6 @@ impl Application for Apekey {
                         .id(INPUT_ID.clone())
                         .padding(10)
                         .width(Length::Fixed(180.0))
-                        .size(20)
                         .on_input(Message::InputChanged),
                 )
                 .width(Length::Fill)
@@ -240,15 +241,14 @@ impl Application for Apekey {
 
                 let default_title = DEFAULT_TITLE.to_string();
                 let title = text(tokens.title.as_ref().unwrap_or(&default_title))
-                    .size(self.config.ui.title_size)
-                    .font(FONT_SS);
+                    .size(self.config.ui.title_size);
 
                 let keybinds = if self.input_value.is_empty() {
-                    scrollable(tokens.view(&self.config))
+                    scrollable(tokens.view(&self.config, &palette))
                 } else {
                     scrollable(self.tokens.iter().fold(column![], |column, keybind| {
                         column
-                            .push(keybind.view(&self.config))
+                            .push(keybind.view(&self.config, &palette))
                             .width(Length::Fill)
                             .spacing(8)
                             .padding(Padding::from([35, 30, 30, 30])) // top, right, bottom, left
@@ -271,6 +271,7 @@ impl Application for Apekey {
             State::Error(err) => container(
                 Text::new(err)
                     .size(self.config.ui.error_size)
+                    .style(palette.danger)
                     .width(Length::Fixed(400.0)),
             )
             .width(Length::Fill)
@@ -325,6 +326,13 @@ impl From<UserConfig> for AppConfig {
                 .map(|t| match t {
                     user_config::Theme::Dark => Theme::Dark,
                     user_config::Theme::Light => Theme::Light,
+                    user_config::Theme::Tars => Theme::custom(theme::Palette {
+                        background: Color::from_rgb8(33, 33, 33), // #212121
+                        text: Color::from_rgb8(203, 205, 212),    // #CBCDD4
+                        primary: Color::from_rgb8(253, 153, 53),  // #FD9935
+                        success: Color::from_rgb8(188, 190, 196), // #212121
+                        danger: Color::from_rgb8(248, 113, 113),  // #f87171
+                    }),
                 })
                 .unwrap_or_else(|| Theme::Dark),
             ui: Ui {

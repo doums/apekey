@@ -130,16 +130,22 @@ Once you have added your descriptions simply launch apekey. Press
 Apekey will look for a config file at
 `$XDG_CONFIG_HOME/apekey/apekey.toml`.
 
-The most important option is `xmonad_config`, it must be set to
-the path pointing to your `xmonad.hs` configuration file.
+Set `xmonad_config` to the path pointing to your
+`xmonad.hs` configuration file.
 
 ```toml
 xmonad_config = "~/.config/xmonad/xmonad.hs"
-```
 
-Other available options are defined in `src/user_config.rs`, check
-for `UserConfig` structure
-https://github.com/doums/apekey/blob/main/src/user_config.rs
+# color theme
+theme = "Dark" # Light, Dark (default), Tars
+
+# [font]
+# title_size = 22
+# section_size = 16
+# keybind_size = 16
+# text_size = 16
+# error_size = 16
+```
 
 ### TODO
 

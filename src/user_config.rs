@@ -9,13 +9,14 @@ use tracing::{debug, error, instrument};
 
 // default values
 const XMONAD_HS_PATH: &str = "~/.config/xmonad/xmonad.hs";
-pub const FONT_SIZE: u16 = 20;
-pub const TITLE_FONT_SIZE: u16 = 28;
+pub const FONT_SIZE: u16 = 16;
+pub const TITLE_FONT_SIZE: u16 = 22;
 
 #[derive(Deserialize, Debug, Clone)]
 pub enum Theme {
     Dark,
     Light,
+    Tars,
 }
 
 #[derive(Deserialize, Debug, Clone)]

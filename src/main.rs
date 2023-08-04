@@ -8,8 +8,8 @@ mod token;
 mod user_config;
 
 use crate::{
-    app::{Apekey, AppConfig},
-    user_config::UserConfig,
+    app::{Apekey, AppConfig, FONT_MONO},
+    user_config::{UserConfig, FONT_SIZE},
 };
 use clap::Parser;
 use dotenv::dotenv;
@@ -62,8 +62,9 @@ fn main() -> iced::Result {
     info!("Path to XMonad config file: {}", &user_config.xmonad_config);
 
     let mut settings = Settings {
-        default_text_size: 22.0,
-        default_font: Some(include_bytes!("../assets/fonts/Roboto-Regular.ttf")),
+        id: Some("apekey".into()),
+        default_text_size: FONT_SIZE as f32,
+        default_font: FONT_MONO,
         ..Settings::with_flags(AppConfig::from(user_config))
     };
     if let Some(size) = cli.font_size {

@@ -6,13 +6,14 @@ use std::fmt;
 
 use iced::{
     alignment::Vertical,
+    theme::Palette,
     widget::{column, Row, Text},
     Alignment, Element, Length, Padding,
 };
 use tracing::{instrument, trace};
 
 use crate::{
-    app::{AppConfig, Message, FONT_MONO, FONT_SS},
+    app::{AppConfig, Message},
     parser::Section as ParsedSection,
 };
 
@@ -36,8 +37,8 @@ impl Keybind {
         }
     }
 
-    fn view(&self, config: &AppConfig) -> Element<'static, Message> {
-        render_keybind(self.keys.clone(), self.description.clone(), config)
+    fn view(&self, config: &AppConfig, palette: &Palette) -> Element<'static, Message> {
+        render_keybind(self.keys.clone(), self.description.clone(), config, palette)
     }
 }
 
@@ -49,21 +50,20 @@ pub struct Section {
 
 impl Section {
     #[instrument(skip_all)]
-    fn view(&self, config: &AppConfig) -> Element<'static, Message> {
+    fn view(&self, config: &AppConfig, palette: &Palette) -> Element<'static, Message> {
         trace!("rendering section {:?}", &self.title);
         let mut content = column![];
         if let Some(t) = &self.title {
             content = content.push(
                 Text::new(t.clone())
                     .size(config.ui.section_size)
-                    .font(FONT_SS)
                     .vertical_alignment(Vertical::Center),
             );
         }
 
         let keybinds = self.keybinds.iter().fold(column![], |column, keybind| {
             column
-                .push(keybind.view(config))
+                .push(keybind.view(config, palette))
                 .width(Length::Fill)
                 .spacing(8)
                 .padding(Padding::from([12, 0, 0, 12])) // top, right, bottom, left
@@ -99,12 +99,12 @@ impl Tokens {
     }
 
     #[instrument(skip_all)]
-    pub fn view(&self, config: &AppConfig) -> Element<'static, Message> {
+    pub fn view(&self, config: &AppConfig, palette: &Palette) -> Element<'static, Message> {
         trace!("view");
         self.sections
             .iter()
             .fold(column![], |column, section| {
-                column.push(section.view(config)).spacing(8)
+                column.push(section.view(config, palette)).spacing(8)
             })
             .width(Length::Fill)
             .spacing(28)
@@ -112,6 +112,7 @@ impl Tokens {
             .into()
     }
 }
+
 #[derive(Debug, Clone, Default)]
 pub struct ScoredKeybind {
     pub keys: String,
@@ -120,8 +121,8 @@ pub struct ScoredKeybind {
 }
 
 impl ScoredKeybind {
-    pub fn view(&self, config: &AppConfig) -> Element<'static, Message> {
-        render_keybind(self.keys.clone(), self.description.clone(), config)
+    pub fn view(&self, config: &AppConfig, palette: &Palette) -> Element<'static, Message> {
+        render_keybind(self.keys.clone(), self.description.clone(), config, palette)
     }
 }
 
@@ -162,11 +163,20 @@ impl<'input> From<(Option<&str>, Vec<ParsedSection<'input>>)> for Tokens {
     }
 }
 
-fn render_keybind(keys: String, desc: String, config: &AppConfig) -> Element<'static, Message> {
+fn render_keybind(
+    keys: String,
+    desc: String,
+    config: &AppConfig,
+    palette: &Palette,
+) -> Element<'static, Message> {
     Row::new()
         .spacing(20)
         .align_items(Alignment::Center)
-        .push(Text::new(keys).font(FONT_MONO).size(config.ui.keybind_size))
+        .push(
+            Text::new(keys)
+                .size(config.ui.keybind_size)
+                .style(palette.primary),
+        )
         .push(Text::new(desc).size(config.ui.keybind_size))
         .into()
 }
