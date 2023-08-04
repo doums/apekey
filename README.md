@@ -7,6 +7,12 @@ List and browse your XMonad keymap.
 
 <img src="https://user-images.githubusercontent.com/6359431/211675677-0e8b44d4-7551-4da4-9d5a-51c83c95b895.png" width="650">
 
+- [install](#install)
+- [usage](#usage)
+- [keybinds annotation](#keybinds-annotation)
+- [configuration](#configuration)
+- [license](#license)
+
 ### Install
 
 - latest [release](https://github.com/doums/apekey/releases/latest)
@@ -14,13 +20,91 @@ List and browse your XMonad keymap.
 
 ### Usage
 
+Apekey reads your `xmonad.hs` config and looks for comments with
+special formats. Based on these comments, apekey will parse and
+generate the keymap, and will render it in a dedicated window.
+
+Once you have annotated your keybinds simply launch apekey. Press
+`Tab` to fuzzy search keybindings by key and/or description.
+
+#### Launching apekey
+
+You can create a keybind to launch it from XMonad. For example,
+using it as a scratchpad:
+
+```
+-- # Keymap
+keybinds = ([
+-- ...
+
+-- Keymap
+, ("M-S-,", namedScratchpadAction scratchpads "keymap")
+
+
+-- ...
+
+scratchpads = [
+-- ...
+
+, NS "keymap" "apekey"
+(title =? "apekey")
+(customFloating $ W.RationalRect 0.4 0.2 0.3 0.8)
+]
+```
+
+#### CLI
+
+Apekey can be launched from the terminal
+
+```shell
+apekey --help
+```
+
+### Keybinds annotation
+
 ⚠ For now apekey only supports keybindings specified in
 _emacs-style_ format
 ([EZConfig](https://xmonad.github.io/xmonad-docs/xmonad-contrib/XMonad-Util-EZConfig.html))
 
-Apekey reads your `xmonad.hs` config and looks for comments with
-special formats. Based on these comments, apekey will parse and
-generate the keymap, and will render it in a dedicated window.
+#### Example
+
+`xmonad.hs` config
+
+```haskell
+-- # XMonad keymap
+keybinds = ([
+-- ## Basics
+-- Recompile and restart XMonad
+("M-C-q",       spawn "xmonad --recompile; xmonad --restart")
+-- Refresh XMonad
+, ("M-C-r",       refresh)
+-- Kill current window
+, ("M-x",         kill)
+
+-- ## Workspace navigation
+-- "M-<Workspace key>" Move to workspace x
+-- "M-S-<Workspace key>" Move current window to workspace x
+-- Switch to last workspace
+, ("M-<Tab>",       toggleRecentWS)
+-- Switch to next workspace
+, ("M-<Page_Up>",   nextWS)
+-- Switch to previous workspace
+, ("M-<Page_Down>", prevWS)
+-- Exec the action of the current workspace
+, ("M-<Return>",    chooseAction wsActions)
+
+-- ## Window navigation
+-- "M-↑→↓←" Navigate through windows
+-- "M-S-↑→↓←" Swap windows
+-- Focus next window up
+, ("M-k",         windows W.focusUp)
+-- Focus next window down
+, ("M-j",         windows W.focusDown)
+
+-- ...
+
+-- #
+```
 
 ##### `-- # [Title]`
 
@@ -87,43 +171,6 @@ Annotate a keybind but do not render it.
   -- ! Description
   , ("<M-u>",   spawn "script.sh")
 ```
-
-#### Illustrative example
-
-`xmonad.hs`
-
-```haskell
--- # XMonad keymap
-keybinds = ([
-  -- ## Basics
-  -- Recompile and restart XMonad
-    ("M-C-q",       spawn "xmonad --recompile; xmonad --restart")
-  -- Refresh XMonad
-  , ("M-C-r",       refresh)
-  -- Kill current window
-  , ("M-x",         kill)
-
-  -- ## Topic navigation
-  -- "M-<Topic key>" Move to topic x
-  -- "M-S-<Topic key>" Move current window to topic x
-  -- Switch to last topic
-  , ("M-<Tab>",     switchToLastTopic)
-
-  -- ## Window navigation
-  -- "M-↑→↓←" Navigate through windows
-  -- "M-S-↑→↓←" Swap windows
-  -- Focus next window up
-  , ("M-k",         windows W.focusUp)
-  -- Focus next window down
-  , ("M-j",         windows W.focusDown)
-
-  -- ...
-
--- #
-```
-
-Once you have added your descriptions simply launch apekey. Press
-`Tab` to fuzzy search keybindings by key and/or description.
 
 ### Configuration
 
