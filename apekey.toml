@@ -2,7 +2,12 @@
 
 # Path to your XMonad configuration file, `xmonad.hs`
 xmonad_config = "~/.config/xmonad/xmonad.hs"
+# theme = 'Dark'
 
-# Other available options are defined in `src/user_config.rs`,
-# check for `UserConfig` structure
-# https://github.com/doums/apekey/blob/main/src/user_config.rs
+# [font]
+# title_size = 22
+# section_size = 16
+# keybind_size = 16
+# text_size = 16
+# error_size = 16
+
