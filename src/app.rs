@@ -234,6 +234,7 @@ impl Application for Apekey {
                         .id(INPUT_ID.clone())
                         .padding(10)
                         .width(Length::Fixed(180.0))
+                        .size(self.config.ui.text_size)
                         .on_input(Message::InputChanged),
                 )
                 .width(Length::Fill)
@@ -336,11 +337,11 @@ impl From<UserConfig> for AppConfig {
                 })
                 .unwrap_or_else(|| Theme::Dark),
             ui: Ui {
-                title_size: font_config.title_size.unwrap_or_default(),
-                section_size: font_config.section_size.unwrap_or_default(),
-                keybind_size: font_config.keybind_size.unwrap_or_default(),
-                text_size: font_config.text_size.unwrap_or_default(),
-                error_size: font_config.error_size.unwrap_or_default(),
+                title_size: font_config.title_size.unwrap_or(TITLE_FONT_SIZE),
+                section_size: font_config.section_size.unwrap_or(FONT_SIZE),
+                keybind_size: font_config.keybind_size.unwrap_or(FONT_SIZE),
+                text_size: font_config.text_size.unwrap_or(FONT_SIZE),
+                error_size: font_config.error_size.unwrap_or(FONT_SIZE),
             },
         }
     }

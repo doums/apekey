@@ -177,6 +177,6 @@ fn render_keybind(
                 .size(config.ui.keybind_size)
                 .style(palette.primary),
         )
-        .push(Text::new(desc).size(config.ui.keybind_size))
+        .push(Text::new(desc).size(config.ui.text_size))
         .into()
 }
